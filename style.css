@@ -1352,6 +1352,18 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .af-label select option { background: #0a1020; }
 
+/* 生日三下拉 + 星座自动匹配提示 */
+.bday-selects { display: flex; gap: 8px; }
+.bday-selects select { flex: 1; min-width: 0; padding: 10px 8px; }
+.bday-selects #regYear { flex: 1.5; }
+.af-note {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--white-faint);
+}
+
 .pair-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
