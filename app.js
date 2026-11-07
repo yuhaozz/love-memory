@@ -5,11 +5,11 @@
    同一台设备上两个账号用配对码共享空间。断网可用。
 
    【云端模式】两人各自手机/电脑实时同步。
-   1. 去 leancloud.cn 注册并创建应用（免费）；
-   2. 把 AppID / AppKey / 服务器地址 填到下面 CLOUD；
-   3. 把 CLOUD.enabled 改成 true。
-   数据存到 LeanCloud：LMUser / LMCouple / LMEntry 三张表，
-   照片存到它的文件服务。两台设备登录即可同步。
+   1. 去 supabase.com 用 GitHub 登录并创建项目（免费）；
+   2. 按 说明.md 第 5 节运行建表 SQL；
+   3. 把 Project URL / anon key 填到下面 CLOUD，enabled 改 true。
+   数据存到 Supabase：lm_users / lm_couples / lm_entries 三张表，
+   照片存到它的 Storage。两台设备登录即可同步。
    ============================================================ */
 (function () {
   'use strict';
@@ -17,9 +17,8 @@
   /* ============ ★ 云端配置（联网同步只需改这里） ============ */
   const CLOUD = {
     enabled: false,          // true = 开启云端同步
-    appId: '',               // LeanCloud AppID
-    appKey: '',              // LeanCloud AppKey
-    serverURL: '',           // LeanCloud「设置→应用凭证」里的 REST API 服务器地址（国际版可留空）
+    supabaseUrl: '',         // Supabase Project URL，如 https://xxxx.supabase.co
+    supabaseKey: '',         // Supabase anon public key（eyJ 开头）
   };
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
 
@@ -46,7 +45,7 @@
   let cacheEntries = {};       // code -> [entries]
   let syncTimer = null;
 
-  const cloudOn = () => CLOUD.enabled && typeof AV !== 'undefined';
+  const cloudOn = () => CLOUD.enabled && typeof window.supabase !== 'undefined';
 
   function loadUsers() { return cloudOn() ? (cacheUsers || {}) : store.read(LS.users, {}); }
   function saveUsers(u) {
@@ -123,12 +122,18 @@
   }
 
   /* ============================================================
-     云端数据层（LeanCloud）
+     云端数据层（Supabase）
+     数据表（建表 SQL 见 说明.md 第 5 节）：
+       lm_users   username(pk) pw nick sign bday couple created_at
+       lm_couples code(pk) since created members(jsonb)
+       lm_entries eid(pk) couple author date mood title text photos(jsonb) ts
+     照片存 Storage 公共桶 photos。
      ============================================================ */
+  let sb = null;
   function cloudInit() {
     if (!cloudOn()) return false;
     try {
-      AV.init({ appId: CLOUD.appId, appKey: CLOUD.appKey, serverURL: CLOUD.serverURL || undefined });
+      sb = window.supabase.createClient(CLOUD.supabaseUrl, CLOUD.supabaseKey);
       return true;
     } catch (e) {
       console.warn('云端初始化失败，退回本地模式', e);
@@ -137,110 +142,87 @@
   }
   function cloudReady() {
     if (!CLOUD.enabled) return false;
-    if (typeof AV === 'undefined') return false;
-    return !!(CLOUD.appId && CLOUD.appKey);
+    if (typeof window.supabase === 'undefined') return false;
+    return !!(CLOUD.supabaseUrl && CLOUD.supabaseKey);
+  }
+  function ck(res) {
+    if (res.error) throw new Error(res.error.message || 'cloud');
+    return res.data;
+  }
+  function rowToUser(r) {
+    return r && {
+      u: r.username, pw: r.pw, nick: r.nick,
+      sign: r.sign || '', bday: r.bday || '',
+      couple: r.couple || null, createdAt: r.created_at || 0,
+    };
+  }
+  function rowToCouple(r) {
+    return r && { code: r.code, since: r.since || '', created: r.created || 0, members: r.members || [] };
+  }
+  function rowToEntry(r) {
+    return r && {
+      id: r.eid, author: r.author, date: r.date,
+      mood: r.mood || '', title: r.title || '', text: r.text || '',
+      photos: r.photos || [], ts: r.ts || 0,
+    };
   }
 
   const C = {
     // ---- 查询 ----
     async fetchUser(u) {
-      const q = new AV.Query('LMUser');
-      q.equalTo('username', u);
-      const r = await q.first();
-      if (!r) return null;
-      return {
-        _id: r.id,
-        u: r.get('username'),
-        pw: r.get('pw'),
-        nick: r.get('nick'),
-        sign: r.get('sign') || '',
-        bday: r.get('bday') || '',
-        couple: r.get('couple') || null,
-        createdAt: r.get('createdAt') || r.createdAt.getTime(),
-      };
+      const r = ck(await sb.from('lm_users').select('*').eq('username', u).maybeSingle());
+      return rowToUser(r);
     },
     async fetchCouple(code) {
-      const q = new AV.Query('LMCouple');
-      q.equalTo('code', code);
-      const r = await q.first();
-      if (!r) return null;
-      return { _id: r.id, code, since: r.get('since') || '', created: r.get('created') || 0, members: r.get('members') || [] };
+      const r = ck(await sb.from('lm_couples').select('*').eq('code', code).maybeSingle());
+      return rowToCouple(r);
     },
     async fetchEntries(code) {
-      const q = new AV.Query('LMEntry');
-      q.equalTo('couple', code);
-      q.descending('ts');
-      q.limit(1000);
-      const rs = await q.find();
-      return rs.map((r) => ({
-        _id: r.id,
-        id: r.get('eid'),
-        author: r.get('author'),
-        date: r.get('date'),
-        mood: r.get('mood') || '',
-        title: r.get('title') || '',
-        text: r.get('text') || '',
-        photos: r.get('photos') || [],
-        ts: r.get('ts') || 0,
-      }));
+      const r = ck(await sb.from('lm_entries').select('*').eq('couple', code).order('ts', { ascending: false }).limit(1000));
+      return (r || []).map(rowToEntry);
     },
     async coupleExists(code) {
-      const q = new AV.Query('LMCouple');
-      q.equalTo('code', code);
-      return (await q.count()) > 0;
+      const res = await sb.from('lm_couples').select('code', { count: 'exact', head: true }).eq('code', code);
+      if (res.error) throw new Error(res.error.message);
+      return (res.count || 0) > 0;
     },
     // ---- 写入 ----
     async createUser(user) {
-      const o = new AV.Object('LMUser');
-      await o.save({
+      ck(await sb.from('lm_users').insert({
         username: user.u, pw: user.pw, nick: user.nick,
-        sign: user.sign, bday: user.bday, couple: user.couple, createdAt: user.createdAt,
-      });
-      return o.id;
+        sign: user.sign, bday: user.bday, couple: user.couple, created_at: user.createdAt,
+      }));
+      return user.u;
     },
     async updateUserCouple(user, code) {
-      if (!user._id) return;
-      const o = AV.Object.createWithoutData('LMUser', user._id);
-      await o.save({ couple: code });
+      ck(await sb.from('lm_users').update({ couple: code }).eq('username', user.u));
     },
     async createCouple(c) {
-      const o = new AV.Object('LMCouple');
-      await o.save({ code: c.code, since: c.since, created: c.created, members: c.members });
-      return o.id;
+      ck(await sb.from('lm_couples').insert({ code: c.code, since: c.since, created: c.created, members: c.members }));
+      return c.code;
     },
     async saveCouple(c) {
-      if (!c._id) return;
-      const o = AV.Object.createWithoutData('LMCouple', c._id);
-      await o.save({ since: c.since, members: c.members });
+      ck(await sb.from('lm_couples').update({ since: c.since, members: c.members }).eq('code', c.code));
     },
     async destroyCouple(c) {
-      if (!c._id) return;
-      await AV.Object.createWithoutData('LMCouple', c._id).destroy();
+      ck(await sb.from('lm_couples').delete().eq('code', c.code));
     },
     async saveEntry(e, code) {
-      // 已存在则更新（查 eid），否则新建
-      const q = new AV.Query('LMEntry');
-      q.equalTo('eid', e.id);
-      const found = await q.first();
-      const o = found || new AV.Object('LMEntry');
-      await o.save({
+      ck(await sb.from('lm_entries').upsert({
         eid: e.id, couple: code, author: e.author, date: e.date,
         mood: e.mood || '', title: e.title || '', text: e.text || '',
         photos: e.photos || [], ts: e.ts,
-      });
-      return o.id;
+      }, { onConflict: 'eid' }));
+      return e.id;
     },
     async deleteEntry(eid) {
-      const q = new AV.Query('LMEntry');
-      q.equalTo('eid', eid);
-      const found = await q.first();
-      if (found) await found.destroy();
+      ck(await sb.from('lm_entries').delete().eq('eid', eid));
     },
     async uploadPhoto(dataUrl, name) {
-      const base64 = dataUrl.split(',')[1];
-      const f = new AV.File(name, { base64 });
-      await f.save();
-      return f.url();
+      const blob = await (await fetch(dataUrl)).blob();
+      ck(await sb.storage.from('photos').upload(name, blob, { contentType: 'image/jpeg' }));
+      const { data } = sb.storage.from('photos').getPublicUrl(name);
+      return data.publicUrl;
     },
     // ---- 组合：把「我 + 空间 + 成员 + 记录」全部拉进缓存 ----
     async pullAll() {
@@ -359,7 +341,7 @@
   function cloudGuard(errEl) {
     if (!CLOUD.enabled) return true; // 本地模式直接通过
     if (!cloudReady()) {
-      errEl.textContent = '云端还没配置好：请检查 app.js 顶部的 AppID / AppKey，或把 CLOUD.enabled 改回 false 用本地模式';
+      errEl.textContent = '云端还没配置好：请检查 app.js 顶部的 supabaseUrl / supabaseKey，或把 CLOUD.enabled 改回 false 用本地模式';
       return false;
     }
     return true;
@@ -797,7 +779,7 @@
       </div>`;
 
     const noteText = cloudOn()
-      ? '数据保存在云端（LeanCloud），两人各自的设备实时同步。仍建议定期「导出我们的数据」做备份。'
+      ? '数据保存在云端（Supabase），两人各自的设备实时同步。仍建议定期「导出我们的数据」做备份。'
       : '所有数据只保存在这台设备的浏览器里。换电脑或清除浏览器数据前，请先「导出我们的数据」备份。';
 
     main.innerHTML = `
