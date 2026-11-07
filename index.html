@@ -293,7 +293,7 @@
         </label>
       </div>
       <div class="af-row">
-        <label class="af-label">星座
+        <label class="af-label">星座<em class="af-note">选生日自动匹配，也可手动改</em>
           <select id="regSign">
             <option>白羊座</option><option>金牛座</option><option>双子座</option>
             <option>巨蟹座</option><option>狮子座</option><option>处女座</option>
@@ -302,7 +302,11 @@
           </select>
         </label>
         <label class="af-label">生日
-          <input id="regBday" type="date" />
+          <div class="bday-selects">
+            <select id="regYear"><option value="">年</option></select>
+            <select id="regMonth"><option value="">月</option></select>
+            <select id="regDay"><option value="">日</option></select>
+          </div>
         </label>
       </div>
       <div class="pair-toggle" id="pairToggle">
