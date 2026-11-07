@@ -24,12 +24,12 @@ const CONFIG = {
 
   // 照片墙演示（高质量示例图，可换成自己的照片）
   photos: [
-    { src: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=breathtaking%20starry%20night%20sky%2C%20glowing%20milky%20way%20core%2C%20silhouette%20of%20a%20couple%20sitting%20on%20a%20hill%20looking%20up%20at%20stars%2C%20cinematic%20long%20exposure%20photography%2C%20deep%20blue%20tones&image_size=landscape_4_3', caption: '初见那天的星空' },
-    { src: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=romantic%20golden%20sunset%20over%20calm%20sea%2C%20couple%20holding%20hands%20walking%20on%20the%20beach%2C%20warm%20orange%20pink%20sky%2C%20cinematic%20photography%2C%20soft%20golden%20light&image_size=landscape_4_3', caption: '一起看过的日落' },
-    { src: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=city%20skyline%20at%20blue%20hour%20seen%20from%20a%20rooftop%2C%20glowing%20city%20lights%20and%20bokeh%2C%20young%20couple%20overlooking%20the%20night%20view%2C%20cinematic%20moody%20photography&image_size=landscape_4_3', caption: '城市的灯火' },
-    { src: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=sunny%20afternoon%20at%20a%20tropical%20beach%2C%20turquoise%20sea%20and%20white%20sand%2C%20gentle%20waves%20and%20footprints%2C%20bright%20airy%20travel%20photography&image_size=landscape_4_3', caption: '海边的午后' },
-    { src: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=misty%20mountain%20morning%20at%20sunrise%2C%20layers%20of%20forest%20ridges%20fading%20into%20soft%20fog%2C%20tranquil%20cinematic%20landscape%20photography&image_size=landscape_4_3', caption: '山间的清晨' },
-    { src: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=cozy%20winter%20evening%20indoors%2C%20warm%20string%20lights%20and%20candle%20glow%2C%20snow%20falling%20outside%20the%20window%2C%20two%20cups%20of%20hot%20cocoa%2C%20intimate%20warm%20photography&image_size=landscape_4_3', caption: '冬夜的暖光' },
+    { src: 'images/g1.jpg', caption: '初见那天的星空' },
+    { src: 'images/g2.jpg', caption: '一起看过的日落' },
+    { src: 'images/g3.jpg', caption: '城市的灯火' },
+    { src: 'images/g4.jpg', caption: '海边的午后' },
+    { src: 'images/g5.jpg', caption: '山间的清晨' },
+    { src: 'images/g6.jpg', caption: '冬夜的暖光' },
   ],
 };
 
