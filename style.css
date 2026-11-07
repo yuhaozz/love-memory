@@ -1048,6 +1048,26 @@ img { display: block; max-width: 100%; }
 }
 .msg-empty span { color: var(--cyan); opacity: 0.6; margin-right: 6px; }
 
+/* 给作者的建议 */
+.fb-divider {
+  margin: 22px 0 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--hairline);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--gold-soft);
+  opacity: 0.85;
+}
+.fb-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--white-mute);
+}
+.fb-status.ok { color: #7ee2a8; }
+.fb-status.err { color: #ff9a9a; }
+
 .msg-form { display: flex; flex-direction: column; gap: 14px; }
 .msg-fields { display: flex; flex-direction: column; gap: 10px; }
 .msg-input {
