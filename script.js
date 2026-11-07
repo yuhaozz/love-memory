@@ -851,8 +851,9 @@ function initStarChart() {
     <defs>
       <radialGradient id="chartBg" cx="50%" cy="42%" r="62%">
         <stop offset="0%" stop-color="#0a1226" stop-opacity="0.94"/>
-        <stop offset="70%" stop-color="#050a1a" stop-opacity="0.72"/>
-        <stop offset="100%" stop-color="#02040c" stop-opacity="0.42"/>
+        <stop offset="55%" stop-color="#050a1a" stop-opacity="0.62"/>
+        <stop offset="82%" stop-color="#02040c" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#02040c" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="chartCore" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.16"/>
@@ -871,7 +872,7 @@ function initStarChart() {
       </linearGradient>
       <clipPath id="chartClip"><circle cx="${cx}" cy="${cy}" r="${R - 1}"/></clipPath>
     </defs>
-    <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#chartBg)" stroke="#2a3b5a" stroke-width="0.8"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#chartBg)"/>
     <circle cx="${cx}" cy="${cy}" r="${R - 6}" fill="none" stroke="#1c2a44" stroke-width="0.5" stroke-dasharray="2 5"/>
     <g clip-path="url(#chartClip)">
       <ellipse cx="${cx}" cy="${cy + 18}" rx="${R - 8}" ry="86" fill="url(#milkyBand)"
