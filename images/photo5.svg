@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="dawn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0c1a33"/>
+      <stop offset="40%" stop-color="#243f63"/>
+      <stop offset="66%" stop-color="#6f93b0"/>
+      <stop offset="82%" stop-color="#b7c9cf"/>
+      <stop offset="100%" stop-color="#1b2a33"/>
+    </linearGradient>
+    <filter id="soft5" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+    <filter id="grain5" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.055 0"/>
+    </filter>
+  </defs>
+  <rect width="800" height="600" fill="url(#dawn)"/>
+  <ellipse cx="360" cy="380" rx="260" ry="60" fill="#dfe9ea" opacity="0.22" filter="url(#soft5)"/>
+  <path d="M0 368 L118 296 L196 352 L286 268 L376 356 L470 300 L556 362 L648 312 L740 370 L800 340 L800 600 L0 600 Z" fill="#1c2c38" opacity="0.55"/>
+  <path d="M0 424 L130 348 L234 420 L342 336 L462 428 L566 372 L672 440 L800 392 L800 600 L0 600 Z" fill="#111d26"/>
+  <path d="M0 492 L160 430 L292 500 L420 440 L548 506 L676 452 L800 500 L800 600 L0 600 Z" fill="#080f15"/>
+  <g fill="#e6f1f5" opacity="0.5">
+    <circle cx="150" cy="120" r="1"/><circle cx="270" cy="86" r="0.8"/><circle cx="420" cy="140" r="1.2"/>
+    <circle cx="560" cy="96" r="0.7"/><circle cx="660" cy="170" r="1"/><circle cx="94" cy="210" r="0.8"/>
+  </g>
+  <rect width="800" height="600" filter="url(#grain5)" opacity="0.5"/>
+</svg>

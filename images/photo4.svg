@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d2440"/>
+      <stop offset="46%" stop-color="#1e4f6b"/>
+      <stop offset="58%" stop-color="#2c6d82"/>
+      <stop offset="72%" stop-color="#174156"/>
+      <stop offset="100%" stop-color="#061018"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fdf3d8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f7d59a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft4" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+    <filter id="grain4" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0"/>
+    </filter>
+  </defs>
+  <rect width="800" height="600" fill="url(#sea)"/>
+  <ellipse cx="520" cy="300" rx="120" ry="80" fill="url(#halo)" filter="url(#soft4)"/>
+  <ellipse cx="520" cy="306" rx="38" ry="8" fill="#fff7e2" opacity="0.9" filter="url(#soft4)"/>
+  <path d="M0 330 Q200 322 400 328 T800 324 L800 600 L0 600 Z" fill="#103147" opacity="0.5"/>
+  <path d="M0 372 Q180 360 380 370 T800 366 L800 600 L0 600 Z" fill="#0a2233" opacity="0.7"/>
+  <path d="M0 430 Q220 418 420 428 T800 424 L800 600 L0 600 Z" fill="#07151f" opacity="0.85"/>
+  <g stroke="#cfe8f2" opacity="0.22" stroke-width="1.2">
+    <line x1="250" y1="356" x2="366" y2="356"/><line x1="430" y1="348" x2="560" y2="348"/>
+    <line x1="600" y1="360" x2="720" y2="360"/><line x1="140" y1="392" x2="270" y2="392"/>
+    <line x1="350" y1="384" x2="520" y2="384"/><line x1="570" y1="400" x2="700" y2="400"/>
+  </g>
+  <ellipse cx="520" cy="344" rx="210" ry="18" fill="#ffe9bd" opacity="0.10" filter="url(#soft4)"/>
+  <rect width="800" height="600" filter="url(#grain4)" opacity="0.5"/>
+</svg>

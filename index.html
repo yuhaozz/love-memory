@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>银河之约 · 我们的纪念</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ============ 背景层 ============ -->
+<div class="space-bg">
+  <canvas id="starfield"></canvas>
+  <svg id="skyConstellations" class="sky-constellations" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+  <div class="nebula-layer" id="nebula"></div>
+  <div class="galaxy-arm" id="galaxyArm"></div>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+</div>
+
+<!-- 点击星空落下的星座 -->
+<canvas id="userStars" aria-hidden="true"></canvas>
+
+<!-- 鼠标跟随光晕 -->
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<!-- ============ 加载动画 ============ -->
+<div class="loader" id="loader">
+  <div class="boot">
+    <div class="boot-row"><span class="boot-k">SESSION</span><span class="boot-v">ORBITAL_RENDERER</span><span class="boot-s">OK</span></div>
+    <div class="boot-row"><span class="boot-k">EPHEMERIS</span><span class="boot-v">EARTH / SOL-3</span><span class="boot-s">OK</span></div>
+    <div class="boot-row"><span class="boot-k">STAR_CATALOG</span><span class="boot-v">HIPPARCOS SUBSET</span><span class="boot-s">LOADED</span></div>
+    <div class="boot-row"><span class="boot-k">SIGNAL</span><span class="boot-v">ACQUIRING…</span><span class="boot-s blink">▮</span></div>
+  </div>
+  <div class="boot-bar"><i></i></div>
+  <div class="boot-caption">穿越银河 · 正在接近地球</div>
+</div>
+
+<!-- ============ 底部导航 ============ -->
+<nav class="bottom-nav">
+  <a href="#home" class="nav-link active" data-target="home">
+    <span class="nav-icon">○</span><span class="nav-label">首页</span>
+  </a>
+  <a href="#coordinates" class="nav-link" data-target="coordinates">
+    <span class="nav-icon">✳</span><span class="nav-label">星图</span>
+  </a>
+  <a href="#anniversary" class="nav-link" data-target="anniversary">
+    <span class="nav-icon">▢</span><span class="nav-label">纪念日</span>
+  </a>
+  <a href="#gallery" class="nav-link" data-target="gallery">
+    <span class="nav-icon">▭</span><span class="nav-label">照片墙</span>
+  </a>
+  <a href="#message" class="nav-link" data-target="message">
+    <span class="nav-icon">◇</span><span class="nav-label">留言板</span>
+  </a>
+  <a class="nav-link nav-app" id="navApp">
+    <span class="nav-icon">❖</span><span class="nav-label">空间</span>
+  </a>
+</nav>
+
+<!-- ============ 01 首页 ============ -->
+<section id="home" class="section hero">
+  <div class="hero-content">
+    <div class="hero-text">
+      <div class="hero-rail"><span>EST. 2023 — ORBIT OF TWO</span></div>
+      <div class="hero-subtitle">COSMIC LOVE STORY</div>
+      <h1 class="hero-title">
+        <span class="name name-a" id="nameA">Aurora</span>
+        <span class="amp">&amp;</span>
+        <span class="name name-b" id="nameB">Orion</span>
+      </h1>
+      <p class="hero-quote" id="heroQuote">从银河到地球，我们在时间里相遇</p>
+
+      <!-- 全息控制台 -->
+      <div class="hud-panel">
+        <div class="hud-top">
+          <span class="hud-label">TOGETHER SINCE</span>
+          <span class="hud-date" id="sinceDate">2023.08.14</span>
+        </div>
+        <div class="hud-counter">
+          <div class="hud-unit">
+            <div class="hud-num" id="days">0000</div>
+            <div class="hud-cap">DAYS</div>
+          </div>
+          <div class="hud-sep">:</div>
+          <div class="hud-unit">
+            <div class="hud-num" id="hours">00</div>
+            <div class="hud-cap">HOURS</div>
+          </div>
+          <div class="hud-sep">:</div>
+          <div class="hud-unit">
+            <div class="hud-num" id="minutes">00</div>
+            <div class="hud-cap">MINUTES</div>
+          </div>
+          <div class="hud-sep">:</div>
+          <div class="hud-unit">
+            <div class="hud-num" id="seconds">00</div>
+            <div class="hud-cap">SECONDS</div>
+          </div>
+        </div>
+        <div class="hud-foot">
+          <span>ELAPSED TIME · LIVE</span>
+          <span class="hud-dot"></span>
+          <span>SYNC 1.0s</span>
+        </div>
+      </div>
+
+      <div class="hero-cta">
+        <button class="cta-btn" id="ctaEnter" type="button">
+          <span class="cta-txt">进入我们的空间</span>
+          <span class="cta-arrow">→</span>
+        </button>
+        <span class="cta-note">PRIVATE ORBIT · 记录两个人的每一天</span>
+      </div>
+
+      <a href="#coordinates" class="scroll-hint">
+        <span class="scroll-line"></span>
+        <span>向下进入轨道</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-meta">
+    <div class="hm-item"><span class="hm-k">OBSERVATORY</span><span class="hm-v">31.23°N · 121.47°E</span></div>
+    <div class="hm-item"><span class="hm-k">LOCAL TIME</span><span class="hm-v" id="localClock">--:--:--</span></div>
+    <div class="hm-item"><span class="hm-k">ALTITUDE</span><span class="hm-v">128 KM · LEO</span></div>
+    <div class="hm-item"><span class="hm-k">SIGNAL</span><span class="hm-v"><i class="pulse"></i>STABLE</span></div>
+  </div>
+</section>
+
+<!-- ============ 02 星图 ============ -->
+<section id="coordinates" class="section">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="sec-meta"><span class="sec-no">02</span><span class="sec-dim"></span><span class="sec-tag">STAR CHART</span></div>
+      <h2 class="section-title">星图</h2>
+      <p class="section-desc" id="chartDesc">它们并不相邻，却在同一片夜空里被同一个人看见。</p>
+    </div>
+
+    <div class="star-stage">
+      <div class="chart-wrap">
+        <svg id="starChart" viewBox="0 0 640 640" preserveAspectRatio="xMidYMid meet" role="img" aria-label="赤道坐标星图"></svg>
+        <div class="chart-hud chart-hud-tl">EQUATORIAL · J2000</div>
+        <div class="chart-hud chart-hud-br">N ↑ · E →</div>
+      </div>
+
+      <div class="coord-meta">
+        <div class="coord-row">
+          <div class="coord-key">SIGN · A</div>
+          <div class="coord-val" id="signA">天琴座 · LYRA</div>
+          <div class="coord-sub" id="signACoord">RA 18h 37m · DEC +38° 47′</div>
+        </div>
+        <div class="coord-row">
+          <div class="coord-key">SIGN · B</div>
+          <div class="coord-val" id="signB">猎户座 · ORION</div>
+          <div class="coord-sub" id="signBCoord">RA 05h 35m · DEC −05° 23′</div>
+        </div>
+        <div class="coord-row">
+          <div class="coord-key">ANGULAR SEP.</div>
+          <div class="coord-val" id="separation">92.6°</div>
+          <div class="coord-sub">两颗星之间的角距离</div>
+        </div>
+        <div class="coord-row meet">
+          <div class="coord-key">MEET POINT</div>
+          <div class="coord-val" id="meetPoint">2023.08.14 · 20:00</div>
+          <div class="coord-sub">引力交汇 · 距离归零</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 纪念日 ============ -->
+<section id="anniversary" class="section">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="sec-meta"><span class="sec-no">03</span><span class="sec-dim"></span><span class="sec-tag">ANNIVERSARY LOG</span></div>
+      <h2 class="section-title">纪念日</h2>
+      <p class="section-desc">时间被切成一段一段，每一段都亮着。</p>
+    </div>
+
+    <div class="anniv-grid" id="annivGrid"></div>
+  </div>
+</section>
+
+<!-- ============ 04 照片墙 ============ -->
+<section id="gallery" class="section">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="sec-meta"><span class="sec-no">04</span><span class="sec-dim"></span><span class="sec-tag">MEMORY ARCHIVE</span></div>
+      <h2 class="section-title">照片墙</h2>
+      <p class="section-desc">被光记录下来的那些瞬间。</p>
+    </div>
+
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+</section>
+
+<!-- 图片放大预览 -->
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-inner">
+    <button class="lb-close" id="lbClose" aria-label="关闭">×</button>
+    <img id="lbImg" src="" alt="" />
+    <div class="lb-foot">
+      <span class="lb-index" id="lbIndex">01 / 06</span>
+      <span class="lb-caption" id="lbCaption"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 05 留言板 ============ -->
+<section id="message" class="section">
+  <div class="section-inner">
+    <div class="message-stage">
+      <div class="section-head">
+        <div class="sec-meta"><span class="sec-no">05</span><span class="sec-dim"></span><span class="sec-tag">COSMIC TERMINAL</span></div>
+        <h2 class="section-title">留言板</h2>
+        <p class="section-desc">把想说的话，留在这片宇宙里。它只存在于此设备。</p>
+      </div>
+
+      <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot on"></span>
+        <span class="term-title">cosmic-message@terminal</span>
+        <span class="term-status">LINK ESTABLISHED</span>
+      </div>
+      <div class="terminal-body">
+        <div class="term-note"><span># </span>messages stored locally · localStorage</div>
+        <div class="msg-list" id="msgList"></div>
+        <form class="msg-form" id="msgForm">
+          <div class="msg-fields">
+            <input type="text" id="msgName" class="msg-input" placeholder="SENDER NAME" maxlength="20" />
+            <textarea id="msgText" class="msg-input msg-area" placeholder="MESSAGE PAYLOAD…" maxlength="300"></textarea>
+          </div>
+          <div class="msg-actions">
+            <span class="msg-count"><span id="msgCount">0</span>/300</span>
+            <button type="submit" class="msg-btn">TRANSMIT <span class="btn-arrow">→</span></button>
+          </div>
+        </form>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-top">
+    <span>MADE WITH STARDUST</span>
+    <span id="footerYear">2026</span>
+  </div>
+  <div class="footer-sub">愿每一次抬头，都能看见彼此的光。</div>
+</footer>
+
+<!-- ============ 登录 / 注册 ============ -->
+<div class="auth-modal" id="authModal" hidden>
+  <div class="auth-box" role="dialog" aria-modal="true">
+    <div class="auth-head">
+      <div class="auth-logo">✦</div>
+      <div class="auth-title">银河之约 · 私密空间</div>
+      <div class="auth-sub">OUR PRIVATE ORBIT</div>
+    </div>
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" data-tab="login">登录</button>
+      <button type="button" class="auth-tab" data-tab="register">注册</button>
+    </div>
+
+    <form class="auth-form" id="loginForm">
+      <label class="af-label">用户名
+        <input id="loginUser" autocomplete="username" required maxlength="20" />
+      </label>
+      <label class="af-label">密码
+        <input id="loginPass" type="password" autocomplete="current-password" required maxlength="40" />
+      </label>
+      <button class="auth-submit" type="submit">登 录</button>
+      <div class="auth-err" id="loginErr"></div>
+    </form>
+
+    <form class="auth-form" id="regForm" hidden>
+      <div class="af-row">
+        <label class="af-label">用户名
+          <input id="regUser" required minlength="2" maxlength="20" placeholder="登录用" />
+        </label>
+        <label class="af-label">昵称
+          <input id="regNick" required maxlength="12" placeholder="TA看到的名字" />
+        </label>
+      </div>
+      <div class="af-row">
+        <label class="af-label">密码
+          <input id="regPass" type="password" required minlength="4" maxlength="40" />
+        </label>
+        <label class="af-label">确认密码
+          <input id="regPass2" type="password" required maxlength="40" />
+        </label>
+      </div>
+      <div class="af-row">
+        <label class="af-label">星座
+          <select id="regSign">
+            <option>白羊座</option><option>金牛座</option><option>双子座</option>
+            <option>巨蟹座</option><option>狮子座</option><option>处女座</option>
+            <option>天秤座</option><option>天蝎座</option><option>射手座</option>
+            <option>摩羯座</option><option>水瓶座</option><option>双鱼座</option>
+          </select>
+        </label>
+        <label class="af-label">生日
+          <input id="regBday" type="date" />
+        </label>
+      </div>
+      <div class="pair-toggle" id="pairToggle">
+        <button type="button" class="pair-opt active" data-pair="create">创建我们的空间</button>
+        <button type="button" class="pair-opt" data-pair="join">加入TA的空间</button>
+      </div>
+      <label class="af-label" id="pairCodeWrap" hidden>配对码（TA创建空间后会看到）
+        <input id="regPair" placeholder="6位配对码" maxlength="6" />
+      </label>
+      <button class="auth-submit" type="submit">注册并进入</button>
+      <div class="auth-err" id="regErr"></div>
+      <div class="auth-tip">数据只保存在本机浏览器 · 同一设备上的两个账号共享同一个空间</div>
+    </form>
+
+    <button class="auth-close" id="authClose" type="button" aria-label="关闭">×</button>
+  </div>
+</div>
+
+<!-- ============ 情侣空间 ============ -->
+<div class="app-overlay" id="app" hidden>
+  <header class="app-top">
+    <div class="app-brand">
+      <span class="app-logo">✦</span>
+      <span class="app-names" id="appNames">—</span>
+      <span class="app-days" id="appDays"></span>
+    </div>
+    <nav class="app-tabs" id="appTabs">
+      <button type="button" class="app-tab active" data-tab="today">今日</button>
+      <button type="button" class="app-tab" data-tab="diary">日记</button>
+      <button type="button" class="app-tab" data-tab="photos">照片</button>
+      <button type="button" class="app-tab" data-tab="timeline">足迹</button>
+      <button type="button" class="app-tab" data-tab="us">我们</button>
+    </nav>
+    <div class="app-user">
+      <span class="sync-state" id="syncState" hidden></span>
+      <button type="button" class="btn-primary" id="btnWrite">＋ 写日记</button>
+      <span class="app-me" id="appMe"></span>
+      <button type="button" class="btn-ghost" id="btnExit" title="返回网站">↩</button>
+      <button type="button" class="btn-ghost" id="btnLogout">退出</button>
+    </div>
+  </header>
+  <main class="app-main" id="appMain"></main>
+</div>
+
+<!-- ============ 日记编辑器 ============ -->
+<div class="editor-modal" id="editorModal" hidden>
+  <div class="editor-box" role="dialog" aria-modal="true">
+    <div class="editor-head">
+      <span id="editorTitle">记录今天</span>
+      <button type="button" class="btn-ghost" id="editorClose">✕</button>
+    </div>
+    <div class="editor-moods" id="editorMoods"></div>
+    <input class="editor-title" id="editorTitleInput" placeholder="标题（可留空）" maxlength="30" />
+    <textarea class="editor-text" id="editorText" rows="6" maxlength="2000" placeholder="今天想记下来的一切……"></textarea>
+    <div class="editor-photos">
+      <div class="editor-thumbs" id="editorThumbs"></div>
+      <label class="editor-addphoto">＋ 照片
+        <input type="file" id="editorFile" accept="image/*" multiple hidden />
+      </label>
+    </div>
+    <div class="editor-foot">
+      <span class="editor-date" id="editorDate"></span>
+      <button type="button" class="btn-primary" id="editorSave">保 存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 照片查看器 -->
+<div class="viewer" id="viewer" hidden>
+  <img id="viewerImg" src="" alt="" />
+  <button type="button" class="viewer-close" id="viewerClose" aria-label="关闭">×</button>
+</div>
+
+<!-- LeanCloud SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
+<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+<script src="script.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

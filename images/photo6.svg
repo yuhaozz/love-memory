@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="winter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1020"/>
+      <stop offset="50%" stop-color="#131c2e"/>
+      <stop offset="100%" stop-color="#03060d"/>
+    </linearGradient>
+    <radialGradient id="lamp" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffe7b8" stop-opacity="0.95"/>
+      <stop offset="45%" stop-color="#ffc87d" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ff9f4a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="bloom6" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <filter id="grain6" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0"/>
+    </filter>
+  </defs>
+  <rect width="800" height="600" fill="url(#winter)"/>
+  <ellipse cx="410" cy="300" rx="170" ry="120" fill="#d9e6ff" opacity="0.05" filter="url(#bloom6)"/>
+  <ellipse cx="410" cy="300" rx="64" ry="48" fill="url(#lamp)" opacity="0.55" filter="url(#bloom6)"/>
+  <rect x="352" y="268" width="116" height="86" fill="#ffd79a" opacity="0.10" rx="4"/>
+  <g stroke="#ffd79a" stroke-width="2" opacity="0.55">
+    <line x1="410" y1="246" x2="410" y2="212"/>
+    <line x1="410" y1="332" x2="410" y2="368"/>
+    <line x1="334" y1="300" x2="300" y2="300"/>
+    <line x1="486" y1="300" x2="520" y2="300"/>
+    <line x1="354" y1="266" x2="332" y2="244"/>
+    <line x1="466" y1="266" x2="488" y2="244"/>
+  </g>
+  <circle cx="410" cy="300" r="7" fill="#fff3d6" opacity="0.9" filter="url(#bloom6)"/>
+  <g fill="#eaf2ff" opacity="0.55">
+    <circle cx="96" cy="90" r="1.1"/><circle cx="212" cy="150" r="0.8"/><circle cx="586" cy="120" r="1.2"/>
+    <circle cx="700" cy="230" r="0.9"/><circle cx="140" cy="440" r="1"/><circle cx="250" cy="520" r="0.8"/>
+    <circle cx="560" cy="470" r="1.3"/><circle cx="676" cy="390" r="0.9"/><circle cx="470" cy="90" r="0.7"/>
+  </g>
+  <g fill="#f7fbff" opacity="0.35">
+    <circle cx="180" cy="260" r="1.5"/><circle cx="300" cy="180" r="1"/><circle cx="620" cy="300" r="1.4"/>
+    <circle cx="520" cy="420" r="1"/><circle cx="380" cy="500" r="1.6"/><circle cx="90" cy="360" r="1.2"/>
+  </g>
+  <rect width="800" height="600" filter="url(#grain6)" opacity="0.5"/>
+</svg>
