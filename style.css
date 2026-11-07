@@ -1352,13 +1352,29 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .af-label select option { background: #0a1020; }
 
+/* 下拉统一换成自定义箭头，更干净 */
+.af-label select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%2355627a' fill='none' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 30px;
+  cursor: pointer;
+}
+
 /* 生日三下拉 + 星座自动匹配提示 */
-.bday-selects { display: flex; gap: 8px; }
-.bday-selects select { flex: 1; min-width: 0; padding: 10px 8px; }
-.bday-selects #regYear { flex: 1.5; }
-.af-note {
-  display: block;
-  font-style: normal;
+.bday-selects { display: flex; gap: 6px; }
+.bday-selects select {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 20px 10px 10px;
+  background-position: right 7px center;
+  font-size: 12.5px;
+}
+.bday-selects #regYear { flex: 1.6; }
+.af-hint {
+  margin: -6px 2px 0;
   font-size: 10px;
   letter-spacing: 0.06em;
   color: var(--white-faint);
