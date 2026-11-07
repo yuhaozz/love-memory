@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>银河之约 · 情侣的私密纪念空间</title>
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css?v=20261107" />
 </head>
 <body>
 
@@ -35,6 +35,13 @@
   <div class="boot-bar"><i></i></div>
   <div class="boot-caption">穿越银河 · 正在接近地球</div>
 </div>
+<script>
+  // 兜底：即使后续脚本加载失败或报错，开机画面也会按时隐藏
+  setTimeout(function () {
+    var l = document.getElementById('loader');
+    if (l) l.classList.add('hide');
+  }, 1800);
+</script>
 
 <!-- ============ 底部导航 ============ -->
 <nav class="bottom-nav">
@@ -384,7 +391,7 @@
 
 <!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="script.js"></script>
-<script src="app.js"></script>
+<script src="script.js?v=20261107"></script>
+<script src="app.js?v=20261107"></script>
 </body>
 </html>
