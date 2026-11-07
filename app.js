@@ -16,9 +16,9 @@
 
   /* ============ ★ 云端配置（联网同步只需改这里） ============ */
   const CLOUD = {
-    enabled: false,          // true = 开启云端同步
-    supabaseUrl: '',         // Supabase Project URL，如 https://xxxx.supabase.co
-    supabaseKey: '',         // Supabase anon public key（eyJ 开头）
+    enabled: true,           // true = 开启云端同步
+    supabaseUrl: 'https://yvjlpyfuejgncnsnwxae.supabase.co',
+    supabaseKey: 'sb_publishable_kYs0WWcvoDJIX-Fozjk2vg_tzwea2hl',
   };
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
 
