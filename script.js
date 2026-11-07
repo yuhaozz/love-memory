@@ -873,7 +873,6 @@ function initStarChart() {
       <clipPath id="chartClip"><circle cx="${cx}" cy="${cy}" r="${R - 1}"/></clipPath>
     </defs>
     <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#chartBg)"/>
-    <circle cx="${cx}" cy="${cy}" r="${R - 6}" fill="none" stroke="#1c2a44" stroke-width="0.5" stroke-dasharray="2 5"/>
     <g clip-path="url(#chartClip)">
       <ellipse cx="${cx}" cy="${cy + 18}" rx="${R - 8}" ry="86" fill="url(#milkyBand)"
         transform="rotate(-27 ${cx} ${cy})" opacity="0.6"/>
@@ -890,26 +889,11 @@ function initStarChart() {
     s += `<text x="${(cx - R * k + 4).toFixed(1)}" y="${cy - 4}" class="chart-dec">${label}</text>`;
   });
 
-  // 12 条赤经辐射线 + 外圈刻度
+  // 12 条赤经辐射线
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
     const x2 = cx + Math.cos(a) * R, y2 = cy + Math.sin(a) * R;
     s += `<line x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#1c2a44" stroke-width="0.5"/>`;
-
-    const lx = cx + Math.cos(a) * (R + 16), ly = cy + Math.sin(a) * (R + 16);
-    if (i % 2 === 0) {
-      s += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" class="chart-scale" text-anchor="middle">${pad(i * 2, 2)}h</text>`;
-    }
-    // 外圈刻度
-    s += `<line x1="${(cx + Math.cos(a) * (R - 4)).toFixed(1)}" y1="${(cy + Math.sin(a) * (R - 4)).toFixed(1)}" ` +
-      `x2="${(cx + Math.cos(a) * (R + 2)).toFixed(1)}" y2="${(cy + Math.sin(a) * (R + 2)).toFixed(1)}" stroke="#2b3d5e" stroke-width="0.6"/>`;
-
-    // 每小时细分刻度
-    for (let k = 1; k <= 2; k++) {
-      const ma = a + (k / 12) * Math.PI * 2;
-      s += `<line x1="${(cx + Math.cos(ma) * (R - 2)).toFixed(1)}" y1="${(cy + Math.sin(ma) * (R - 2)).toFixed(1)}" ` +
-        `x2="${(cx + Math.cos(ma) * (R + 1)).toFixed(1)}" y2="${(cy + Math.sin(ma) * (R + 1)).toFixed(1)}" stroke="#22304a" stroke-width="0.4"/>`;
-    }
   }
 
   // 散布的背景星（按星等分布，带色温差异）
