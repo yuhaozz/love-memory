@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>银河之约</title>
-<link rel="stylesheet" href="style.css?v=20261107" />
+<link rel="stylesheet" href="style.css?v=20261107c" />
 </head>
 <body>
 
@@ -221,7 +221,7 @@
       <div class="section-head">
         <div class="sec-meta"><span class="sec-no">05</span><span class="sec-dim"></span><span class="sec-tag">COSMIC TERMINAL</span></div>
         <h2 class="section-title">留言板</h2>
-        <p class="section-desc">把想说的话，留在这片宇宙里——欢迎随手留一句，它只存在于此设备。登录后，你们会拥有云端同步的私密空间。</p>
+        <p class="section-desc">把想说的话，留在这片宇宙里——欢迎随手留一句，它只存在于此设备。喜欢这个系统？也可以在下方给作者提建议，它会直接发送到云端，帮助这里变得更好。</p>
       </div>
 
       <div class="terminal">
@@ -241,6 +241,18 @@
           <div class="msg-actions">
             <span class="msg-count"><span id="msgCount">0</span>/300</span>
             <button type="submit" class="msg-btn">TRANSMIT <span class="btn-arrow">→</span></button>
+          </div>
+        </form>
+
+        <div class="fb-divider"><span>FEEDBACK · 给作者的建议（直达云端）</span></div>
+        <form class="msg-form" id="fbForm">
+          <div class="msg-fields">
+            <input type="text" id="fbName" class="msg-input" placeholder="你的称呼（可留空）" maxlength="20" />
+            <textarea id="fbText" class="msg-input msg-area" placeholder="希望增加什么功能？哪里用着不顺？告诉我们…" maxlength="500"></textarea>
+          </div>
+          <div class="msg-actions">
+            <span class="fb-status" id="fbStatus"></span>
+            <button type="submit" class="msg-btn">发送给作者 <span class="btn-arrow">→</span></button>
           </div>
         </form>
       </div>
@@ -391,7 +403,7 @@
 
 <!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="script.js?v=20261107b"></script>
+<script src="script.js?v=20261107c"></script>
 <script src="app.js?v=20261107"></script>
 </body>
 </html>
