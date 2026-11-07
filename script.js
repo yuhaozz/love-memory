@@ -1279,28 +1279,21 @@ function initScrollReveal() {
    13. 点击星空 · 连成你们的星座
    ------------------------------------------------------------
    在页面空白处点击落下一颗星，自动与上一颗连线，
-   像一起认领一片星域。数据保存在本机 localStorage。
+   像一起认领一片星域。星星会停留片刻（约 9 秒），
+   再用 6 秒渐渐消散，不在画面里长留。
    ============================================================ */
 function initUserStars() {
   const canvas = $('userStars');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const KEY = 'ot_skystars';
   const MAX = 160;
+  const HOLD = 9000;   // 完全可见时长（ms）
+  const FADE = 6000;   // 渐渐消散时长（ms）
+  const LIFE = HOLD + FADE;
   let w = 0, h = 0, dpr = 1;
   let pts = [];
   let ripples = [];
-
-  try { pts = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { pts = []; }
-  if (!Array.isArray(pts)) pts = [];
-  if (!pts.length && new URLSearchParams(location.search).has('seedstars')) {
-    pts = [
-      { x: 0.18, y: 0.30 }, { x: 0.26, y: 0.22 }, { x: 0.34, y: 0.31 },
-      { x: 0.42, y: 0.24 }, { x: 0.50, y: 0.33 }, { x: 0.30, y: 0.44 },
-      { x: 0.38, y: 0.52 },
-    ];
-    save();
-  }
+  let shownLen = 0;
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1311,24 +1304,35 @@ function initUserStars() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(pts.slice(-MAX))); } catch { /* 忽略 */ }
+  // 生命周期：先停留，再平滑消散
+  function fadeOf(p, t) {
+    const age = t - p.t;
+    if (age <= HOLD) return 1;
+    if (age >= LIFE) return 0;
+    const k = (age - HOLD) / FADE;
+    return 1 - k * k * (3 - 2 * k);
   }
 
   function draw() {
     ctx.clearRect(0, 0, w, h);
     const t = performance.now();
 
-    // 连线：温柔的蓝白渐隐线
+    // 消散完毕的星从头部移除（点击按时间顺序，过期的一定是前缀）
+    while (pts.length && t - pts[0].t > LIFE) pts.shift();
+    if (pts.length !== shownLen) { shownLen = pts.length; updateBar(); }
+
+    // 连线：温柔的蓝白渐隐线，随端点一起消散
     if (pts.length > 1) {
       ctx.lineWidth = 0.7;
       for (let i = 1; i < pts.length; i++) {
         const a = pts[i - 1], b = pts[i];
+        const k = Math.min(fadeOf(a, t), fadeOf(b, t));
+        if (k <= 0) continue;
         const ax = a.x * w, ay = a.y * h, bx = b.x * w, by = b.y * h;
         const g = ctx.createLinearGradient(ax, ay, bx, by);
-        g.addColorStop(0, 'rgba(158,197,255,0.04)');
-        g.addColorStop(0.5, 'rgba(158,197,255,0.32)');
-        g.addColorStop(1, 'rgba(158,197,255,0.04)');
+        g.addColorStop(0, `rgba(158,197,255,${(0.04 * k).toFixed(3)})`);
+        g.addColorStop(0.5, `rgba(158,197,255,${(0.32 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(158,197,255,${(0.04 * k).toFixed(3)})`);
         ctx.strokeStyle = g;
         ctx.beginPath();
         ctx.moveTo(ax, ay);
@@ -1337,19 +1341,21 @@ function initUserStars() {
       }
     }
 
-    // 星点：光晕 + 白核，最新一颗缓慢脉动
+    // 星点：光晕 + 白核，最新一颗缓慢脉动，整体随时间渐隐
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
+      const k = fadeOf(p, t);
+      if (k <= 0) continue;
       const x = p.x * w, y = p.y * h;
       const last = i === pts.length - 1;
       const pulse = last && !REDUCED ? 1 + Math.sin(t / 320) * 0.32 : 1;
       const r = (last ? 2.3 : 1.6) * pulse;
       const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 6);
-      glow.addColorStop(0, 'rgba(190,220,255,0.45)');
+      glow.addColorStop(0, `rgba(190,220,255,${(0.45 * k).toFixed(3)})`);
       glow.addColorStop(1, 'rgba(190,220,255,0)');
       ctx.fillStyle = glow;
       ctx.beginPath(); ctx.arc(x, y, r * 6, 0, 6.2832); ctx.fill();
-      ctx.fillStyle = 'rgba(232,240,255,0.95)';
+      ctx.fillStyle = `rgba(232,240,255,${(0.95 * k).toFixed(3)})`;
       ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
     }
 
@@ -1372,9 +1378,8 @@ function initUserStars() {
   document.addEventListener('click', (e) => {
     if (e.target.closest(IGNORE)) return;
     if (!w || !h) return;
-    pts.push({ x: e.clientX / w, y: e.clientY / h });
+    pts.push({ x: e.clientX / w, y: e.clientY / h, t: performance.now() });
     if (pts.length > MAX) pts.shift();
-    save();
     ripples.push({ x: e.clientX, y: e.clientY, t0: performance.now() });
     updateBar();
   });
@@ -1389,7 +1394,7 @@ function initUserStars() {
   bar.querySelector('.sky-hint-clear').addEventListener('click', (e) => {
     e.stopPropagation();
     pts = [];
-    save();
+    shownLen = 0;
     updateBar();
   });
   updateBar();
