@@ -1000,14 +1000,21 @@ function initAnniversaries() {
     grid.innerHTML = '';
 
     CONFIG.anniversaries.forEach((item, idx) => {
-      const diff = item.date - now;
+      let d = item.date;
+      // 倒计时类的日子（周年、生日）每年都会来：过了就自动顺延到下一次
+      if (item.type === 'countdown') {
+        while (d <= now) {
+          d = new Date(d.getFullYear() + 1, d.getMonth(), d.getDate(),
+            d.getHours(), d.getMinutes(), d.getSeconds());
+        }
+      }
+      const diff = d - now;
       const absDays = Math.ceil(Math.abs(diff) / 86400000);
 
       let statusClass = 'passed', statusText = '已过去', countText = absDays.toLocaleString();
       if (item.type === 'countdown') {
-        if (diff > 0) { statusClass = 'upcoming'; statusText = '倒计时'; }
-        else if (diff > -86400000) { statusClass = 'today'; statusText = '就是今天'; countText = '0'; }
-        else { statusClass = 'passed'; statusText = '已过'; }
+        if (diff >= 86400000) { statusClass = 'upcoming'; statusText = '倒计时'; }
+        else { statusClass = 'today'; statusText = '就是今天'; countText = '0'; }
       }
 
       const el = document.createElement('div');
@@ -1019,13 +1026,13 @@ function initAnniversaries() {
           <span class="anniv-status ${statusClass}">${statusText}</span>
         </div>
         <div class="anniv-title">${item.title}</div>
-        <div class="anniv-date">${formatDate(item.date)}</div>
+        <div class="anniv-date">${formatDate(d)}</div>
         <div class="anniv-count-row">
           <span class="anniv-count">${countText}</span>
           <span class="anniv-unit">DAYS</span>
         </div>
         <div class="anniv-rule"></div>
-        <div class="anniv-foot">${item.type === 'countdown' ? 'UNTIL' : 'SINCE'} ${formatDate(item.date)}</div>
+        <div class="anniv-foot">${item.type === 'countdown' ? 'UNTIL' : 'SINCE'} ${formatDate(d)}</div>
       `;
       grid.appendChild(el);
     });
