@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>银河之约 · 我们的纪念</title>
+<title>银河之约 · 情侣的私密纪念空间</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -62,68 +62,66 @@
 <section id="home" class="section hero">
   <div class="hero-content">
     <div class="hero-text">
-      <div class="hero-rail"><span>EST. 2023 — ORBIT OF TWO</span></div>
-      <div class="hero-subtitle">COSMIC LOVE STORY</div>
+      <div class="hero-rail"><span>A PRIVATE GALAXY FOR EVERY COUPLE</span></div>
+      <div class="hero-subtitle">GALACTIC PROMISE</div>
       <h1 class="hero-title">
-        <span class="name name-a" id="nameA">Aurora</span>
-        <span class="amp">&amp;</span>
-        <span class="name name-b" id="nameB">Orion</span>
+        <span class="name name-brand">银河之约</span>
       </h1>
-      <p class="hero-quote" id="heroQuote">从银河到地球，我们在时间里相遇</p>
+      <p class="hero-quote">把两个人的故事，安放在星河之间。<br />星图、纪念日、照片与悄悄话——为情侣而生的私密空间。</p>
 
-      <!-- 全息控制台 -->
+      <!-- 功能模块 -->
       <div class="hud-panel">
         <div class="hud-top">
-          <span class="hud-label">TOGETHER SINCE</span>
-          <span class="hud-date" id="sinceDate">2023.08.14</span>
+          <span class="hud-label">ORBITAL MODULES</span>
+          <span class="hud-date">ALL SYSTEMS READY</span>
         </div>
-        <div class="hud-counter">
+        <div class="hud-counter hud-modules">
           <div class="hud-unit">
-            <div class="hud-num" id="days">0000</div>
-            <div class="hud-cap">DAYS</div>
+            <div class="hud-num hud-mod">星图</div>
+            <div class="hud-cap">STAR CHART</div>
           </div>
-          <div class="hud-sep">:</div>
+          <div class="hud-sep">·</div>
           <div class="hud-unit">
-            <div class="hud-num" id="hours">00</div>
-            <div class="hud-cap">HOURS</div>
+            <div class="hud-num hud-mod">纪念日</div>
+            <div class="hud-cap">ANNIVERSARY</div>
           </div>
-          <div class="hud-sep">:</div>
+          <div class="hud-sep">·</div>
           <div class="hud-unit">
-            <div class="hud-num" id="minutes">00</div>
-            <div class="hud-cap">MINUTES</div>
+            <div class="hud-num hud-mod">相册</div>
+            <div class="hud-cap">GALLERY</div>
           </div>
-          <div class="hud-sep">:</div>
+          <div class="hud-sep">·</div>
           <div class="hud-unit">
-            <div class="hud-num" id="seconds">00</div>
-            <div class="hud-cap">SECONDS</div>
+            <div class="hud-num hud-mod">留言</div>
+            <div class="hud-cap">MESSAGES</div>
           </div>
         </div>
         <div class="hud-foot">
-          <span>ELAPSED TIME · LIVE</span>
+          <span>FOR EVERY COUPLE · FREE TO START</span>
           <span class="hud-dot"></span>
-          <span>SYNC 1.0s</span>
+          <span>CLOUD SYNC</span>
         </div>
       </div>
 
       <div class="hero-cta">
         <button class="cta-btn" id="ctaEnter" type="button">
-          <span class="cta-txt">进入我们的空间</span>
+          <span class="cta-txt">开启属于我们的空间</span>
           <span class="cta-arrow">→</span>
         </button>
-        <span class="cta-note">PRIVATE ORBIT · 记录两个人的每一天</span>
+        <span class="cta-note">FREE · 注册即可创建你们的小宇宙</span>
       </div>
 
       <a href="#coordinates" class="scroll-hint">
         <span class="scroll-line"></span>
-        <span>向下进入轨道</span>
+        <span>向下探索功能</span>
       </a>
     </div>
   </div>
 
   <div class="hero-meta">
-    <div class="hm-item"><span class="hm-k">OBSERVATORY</span><span class="hm-v">31.23°N · 121.47°E</span></div>
+    <div class="hm-item"><span class="hm-k">LOCATION</span><span class="hm-v">EARTH · SOL-3</span></div>
     <div class="hm-item"><span class="hm-k">LOCAL TIME</span><span class="hm-v" id="localClock">--:--:--</span></div>
-    <div class="hm-item"><span class="hm-k">ALTITUDE</span><span class="hm-v">128 KM · LEO</span></div>
+    <div class="hm-item"><span class="hm-k">ORBIT</span><span class="hm-v">LEO · 128 KM</span></div>
     <div class="hm-item"><span class="hm-k">SIGNAL</span><span class="hm-v"><i class="pulse"></i>STABLE</span></div>
   </div>
 </section>
@@ -134,24 +132,25 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">02</span><span class="sec-dim"></span><span class="sec-tag">STAR CHART</span></div>
       <h2 class="section-title">星图</h2>
-      <p class="section-desc" id="chartDesc">它们并不相邻，却在同一片夜空里被同一个人看见。</p>
+      <p class="section-desc" id="chartDesc">把两个人的星座，连成一幅只属于你们的图。注册时填写生日，系统会自动生成——下方为演示数据。</p>
     </div>
 
     <div class="star-stage">
       <div class="chart-wrap">
         <svg id="starChart" viewBox="0 0 640 640" preserveAspectRatio="xMidYMid meet" role="img" aria-label="赤道坐标星图"></svg>
         <div class="chart-hud chart-hud-tl">EQUATORIAL · J2000</div>
+        <div class="chart-hud chart-hud-tr">DEMO · 示例数据</div>
         <div class="chart-hud chart-hud-br">N ↑ · E →</div>
       </div>
 
       <div class="coord-meta">
         <div class="coord-row">
-          <div class="coord-key">SIGN · A</div>
+          <div class="coord-key">SIGN · 她（示例）</div>
           <div class="coord-val" id="signA">天琴座 · LYRA</div>
           <div class="coord-sub" id="signACoord">RA 18h 37m · DEC +38° 47′</div>
         </div>
         <div class="coord-row">
-          <div class="coord-key">SIGN · B</div>
+          <div class="coord-key">SIGN · 他（示例）</div>
           <div class="coord-val" id="signB">猎户座 · ORION</div>
           <div class="coord-sub" id="signBCoord">RA 05h 35m · DEC −05° 23′</div>
         </div>
@@ -162,8 +161,8 @@
         </div>
         <div class="coord-row meet">
           <div class="coord-key">MEET POINT</div>
-          <div class="coord-val" id="meetPoint">2023.08.14 · 20:00</div>
-          <div class="coord-sub">引力交汇 · 距离归零</div>
+          <div class="coord-val">你们相遇的那一天</div>
+          <div class="coord-sub">注册后，这里会写下你们自己的坐标</div>
         </div>
       </div>
     </div>
@@ -176,7 +175,7 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">03</span><span class="sec-dim"></span><span class="sec-tag">ANNIVERSARY LOG</span></div>
       <h2 class="section-title">纪念日</h2>
-      <p class="section-desc">时间被切成一段一段，每一段都亮着。</p>
+      <p class="section-desc">在一起的那天、TA 的生日、下一个周年——系统自动倒数与正数，一个都不会忘。下方为演示数据。</p>
     </div>
 
     <div class="anniv-grid" id="annivGrid"></div>
@@ -189,7 +188,7 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">04</span><span class="sec-dim"></span><span class="sec-tag">MEMORY ARCHIVE</span></div>
       <h2 class="section-title">照片墙</h2>
-      <p class="section-desc">被光记录下来的那些瞬间。</p>
+      <p class="section-desc">上传照片，把被光记录下来的瞬间挂上星空。下方为示例图。</p>
     </div>
 
     <div class="gallery-grid" id="galleryGrid"></div>
@@ -215,7 +214,7 @@
       <div class="section-head">
         <div class="sec-meta"><span class="sec-no">05</span><span class="sec-dim"></span><span class="sec-tag">COSMIC TERMINAL</span></div>
         <h2 class="section-title">留言板</h2>
-        <p class="section-desc">把想说的话，留在这片宇宙里。它只存在于此设备。</p>
+        <p class="section-desc">把想说的话，留在这片宇宙里——欢迎随手留一句，它只存在于此设备。登录后，你们会拥有云端同步的私密空间。</p>
       </div>
 
       <div class="terminal">
