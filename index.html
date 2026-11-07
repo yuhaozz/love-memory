@@ -292,7 +292,16 @@
           <input id="regPass2" type="password" required maxlength="40" />
         </label>
       </div>
-      <div class="af-row">
+      <div class="af-row af-row-full">
+        <label class="af-label">生日
+          <div class="bday-selects">
+            <select id="regYear"><option value="">年</option></select>
+            <select id="regMonth"><option value="">月</option></select>
+            <select id="regDay"><option value="">日</option></select>
+          </div>
+        </label>
+      </div>
+      <div class="af-row af-row-full">
         <label class="af-label">星座
           <select id="regSign">
             <option>白羊座</option><option>金牛座</option><option>双子座</option>
@@ -300,13 +309,6 @@
             <option>天秤座</option><option>天蝎座</option><option>射手座</option>
             <option>摩羯座</option><option>水瓶座</option><option>双鱼座</option>
           </select>
-        </label>
-        <label class="af-label">生日
-          <div class="bday-selects">
-            <select id="regYear"><option value="">年</option></select>
-            <select id="regMonth"><option value="">月</option></select>
-            <select id="regDay"><option value="">日</option></select>
-          </div>
         </label>
       </div>
       <div class="af-hint">选好生日自动匹配星座，也可以手动改</div>
