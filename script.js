@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAnniversaries();
   initGallery();
   initMessages();
+  initFeedback();
   initCursorGlow();
   initScrollParallax();
   initNav();
@@ -1148,6 +1149,49 @@ function initMessages() {
   });
 
   render();
+}
+
+/* ============================================================
+   8.5 给作者的建议（直达云端 lm_feedback 表）
+   ============================================================ */
+function initFeedback() {
+  const form = $('fbForm');
+  if (!form) return;
+  const status = $('fbStatus');
+  let sending = false;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (sending) return;
+    const name = $('fbName').value.trim();
+    const text = $('fbText').value.trim();
+    if (!text) { $('fbText').focus(); return; }
+
+    sending = true;
+    status.className = 'fb-status';
+    status.textContent = 'SENDING…';
+
+    try {
+      if (typeof CLOUD === 'undefined' || !CLOUD.enabled || !window.supabase) {
+        throw new Error('cloud unavailable');
+      }
+      const sb = window.supabase.createClient(CLOUD.supabaseUrl, CLOUD.supabaseKey);
+      const { error } = await sb.from('lm_feedback').insert({
+        name: name || '匿名访客',
+        text: text,
+        ts: Date.now(),
+      });
+      if (error) throw error;
+
+      status.classList.add('ok');
+      status.textContent = '已收到，感谢你的建议';
+      form.reset();
+    } catch (err) {
+      status.classList.add('err');
+      status.textContent = '发送失败，请稍后再试';
+    }
+    sending = false;
+  });
 }
 
 /* ============================================================
