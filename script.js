@@ -1,27 +1,18 @@
 /* ============================================================
-   银河之约 · 情侣纪念网站
+   银河之约 · 情侣纪念空间
    ------------------------------------------------------------
-   所有可修改内容集中在 CONFIG
+   首页是面向所有访客的品牌与功能演示页。
+   下方 CONFIG 全部为「演示数据」，仅用于展示功能效果，
+   与任何真实用户无关；登录后的私密内容由 app.js 驱动。
    ============================================================ */
 
 const CONFIG = {
-  // 情侣名字
-  nameA: 'Aurora',
-  nameB: 'Orion',
-
-  // 首页副标题
-  heroQuote: '从银河到地球，我们在时间里相遇',
-
-  // 相恋起始日期 (年, 月-1, 日, 时, 分, 秒) —— 月份从 0 开始
-  sinceDate: new Date(2023, 7, 14, 20, 0, 0),
-  dateDisplay: '2023.08.14',
-
-  // 两个人的星座（用于星图）
+  // 星图演示：把两个人的星座连成一幅图（示例星座）
   // 可选：Orion / Lyra / Cassiopeia / Leo / Scorpius / Cygnus / UrsaMajor / Taurus
   signA: 'Lyra',
   signB: 'Orion',
 
-  // 纪念日
+  // 纪念日演示：系统自动倒数 / 正数（示例条目）
   anniversaries: [
     { title: '初见', date: new Date(2023, 6, 20, 0, 0, 0), type: 'countup' },
     { title: '确定关系', date: new Date(2023, 7, 14, 20, 0, 0), type: 'countup' },
@@ -31,7 +22,7 @@ const CONFIG = {
     { title: '第一次旅行', date: new Date(2023, 9, 1, 0, 0, 0), type: 'countup' },
   ],
 
-  // 照片墙 —— 替换图片时修改 src
+  // 照片墙演示（抽象示例图）
   photos: [
     { src: 'images/photo1.svg', caption: '初见那天的星空' },
     { src: 'images/photo2.svg', caption: '一起看过的日落' },
@@ -130,17 +121,11 @@ function pad(n, len) { return String(Math.floor(n)).padStart(len, '0'); }
    启动
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  $('nameA').textContent = CONFIG.nameA;
-  $('nameB').textContent = CONFIG.nameB;
-  $('heroQuote').textContent = CONFIG.heroQuote;
-  $('sinceDate').textContent = CONFIG.dateDisplay;
-  $('meetPoint').textContent = CONFIG.dateDisplay + ' · 20:00';
   $('footerYear').textContent = new Date().getFullYear();
 
   renderSkyConstellations();
   initStarfield();
   initEarth();          // 同步生成行星贴图
-  initCounter();
   initLocalClock();
   initStarChart();
   initAnniversaries();
@@ -809,27 +794,8 @@ function initEarth() {
 }
 
 /* ============================================================
-   4. 实时计时
+   4. 本地时钟（首页观测数据）
    ============================================================ */
-function initCounter() {
-  const daysEl = $('days'), hoursEl = $('hours'), minEl = $('minutes'), secEl = $('seconds');
-  function update() {
-    const diff = Date.now() - CONFIG.sinceDate.getTime();
-    if (diff < 0) {
-      daysEl.textContent = '0000'; hoursEl.textContent = '00';
-      minEl.textContent = '00'; secEl.textContent = '00';
-      return;
-    }
-    const total = Math.floor(diff / 1000);
-    daysEl.textContent = pad(total / 86400, 4);
-    hoursEl.textContent = pad((total % 86400) / 3600, 2);
-    minEl.textContent = pad((total % 3600) / 60, 2);
-    secEl.textContent = pad(total % 60, 2);
-  }
-  update();
-  setInterval(update, 1000);
-}
-
 function initLocalClock() {
   const el = $('localClock');
   if (!el) return;
@@ -1014,12 +980,8 @@ function initStarChart() {
   $('signACoord').textContent = f(A.raH, A.dec);
   $('signBCoord').textContent = f(B.raH, B.dec);
 
-  // 角距与描述
+  // 角距
   $('separation').textContent = sepText;
-  const desc = $('chartDesc');
-  if (desc) {
-    desc.textContent = `两颗星分属不同的星座，相隔约 ${Math.round(sep)} 度。它们并不相邻，却在同一片夜空里被同一个人看见。`;
-  }
 }
 
 /* ============================================================
