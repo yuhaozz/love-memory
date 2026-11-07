@@ -377,6 +377,54 @@
     enterApp();
   });
 
+  /* ---- 生日三下拉：直接选年月日，选完自动匹配星座 ---- */
+  const SIGN_BOUND = [
+    [1, 19, '摩羯座'], [2, 18, '水瓶座'], [3, 20, '双鱼座'], [4, 19, '白羊座'],
+    [5, 20, '金牛座'], [6, 21, '双子座'], [7, 22, '巨蟹座'], [8, 22, '狮子座'],
+    [9, 22, '处女座'], [10, 23, '天秤座'], [11, 22, '天蝎座'], [12, 21, '射手座'],
+    [12, 31, '摩羯座'],
+  ];
+  function signOf(m, d) {
+    for (const [sm, sd, name] of SIGN_BOUND) {
+      if (m < sm || (m === sm && d <= sd)) return name;
+    }
+    return '摩羯座';
+  }
+  (function initBdayPicker() {
+    const ySel = $('regYear'), mSel = $('regMonth'), dSel = $('regDay');
+    if (!ySel || !mSel || !dSel) return;
+    const nowY = new Date().getFullYear();
+    for (let y = nowY; y >= nowY - 90; y--) {
+      ySel.insertAdjacentHTML('beforeend', `<option value="${y}">${y} 年</option>`);
+    }
+    for (let m = 1; m <= 12; m++) {
+      mSel.insertAdjacentHTML('beforeend', `<option value="${m}">${m} 月</option>`);
+    }
+    function refillDays() {
+      const y = +ySel.value || 2000, m = +mSel.value || 1;
+      const max = new Date(y, m, 0).getDate();
+      const keep = +dSel.value || 0;
+      dSel.innerHTML = '<option value="">日</option>';
+      for (let d = 1; d <= max; d++) {
+        dSel.insertAdjacentHTML('beforeend', `<option value="${d}">${d} 日</option>`);
+      }
+      if (keep && keep <= max) dSel.value = String(keep);
+    }
+    function autoSign() {
+      const m = +mSel.value, d = +dSel.value;
+      if (m && d) $('regSign').value = signOf(m, d);
+    }
+    refillDays();
+    ySel.addEventListener('change', refillDays);
+    mSel.addEventListener('change', () => { refillDays(); autoSign(); });
+    dSel.addEventListener('change', autoSign);
+  })();
+  function bdayVal() {
+    const y = $('regYear').value, m = $('regMonth').value, d = $('regDay').value;
+    if (!y || !m || !d) return '';
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
   $('regForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('regErr');
@@ -407,7 +455,7 @@
         }
         await C.createUser({
           u, nick, pw: hash(p1),
-          sign: $('regSign').value, bday: $('regBday').value || '',
+          sign: $('regSign').value, bday: bdayVal(),
           couple: code, createdAt: Date.now(),
         });
         err.textContent = '';
@@ -432,7 +480,7 @@
     }
     users[u] = {
       u, nick, pw: hash(p1),
-      sign: $('regSign').value, bday: $('regBday').value || '',
+      sign: $('regSign').value, bday: bdayVal(),
       couple: null, createdAt: Date.now(),
     };
     if (pairMode === 'create') {
