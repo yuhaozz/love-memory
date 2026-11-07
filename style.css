@@ -421,21 +421,15 @@ img { display: block; max-width: 100%; }
     -1px 0 rgba(34, 211, 238, 0.3),
     1px 0 rgba(129, 140, 248, 0.24);
 }
-.hero-title .name-b {
-  background: linear-gradient(140deg, #fbf3df 0%, #e6c67a 55%, #c1922f 100%);
+.hero-title .name-brand {
+  background: linear-gradient(120deg, #f4f9ff 0%, #a8d4f7 36%, #e8c97a 78%, #c1922f 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow:
-    -1px 0 rgba(212, 160, 23, 0.24),
-    1px 0 rgba(56, 189, 248, 0.18);
-}
-.hero-title .amp {
-  font-size: 0.36em;
-  font-weight: 300;
-  color: var(--white-faint);
-  letter-spacing: 0;
-  padding: 0 0.08em;
+    -1px 0 rgba(34, 211, 238, 0.3),
+    1px 0 rgba(212, 160, 23, 0.22);
+  letter-spacing: 0.16em;
 }
 
 .hero-quote {
@@ -511,6 +505,12 @@ img { display: block; max-width: 100%; }
   letter-spacing: 0.24em;
   color: var(--white-mute);
 }
+.hud-mod {
+  font-size: clamp(19px, 2.6vw, 28px);
+  letter-spacing: 0.14em;
+}
+.hud-modules { align-items: baseline; }
+.hud-modules .hud-sep { padding-bottom: 18px; }
 .hud-sep {
   font-size: clamp(20px, 3vw, 30px);
   line-height: 1;
@@ -676,6 +676,7 @@ img { display: block; max-width: 100%; }
   pointer-events: none;
 }
 .chart-hud-tl { top: 14px; left: 16px; }
+.chart-hud-tr { top: 14px; right: 16px; color: rgba(232, 201, 122, 0.72); }
 .chart-hud-br { bottom: 14px; right: 16px; }
 
 /* 数据表 */
