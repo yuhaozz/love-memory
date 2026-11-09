@@ -2834,9 +2834,11 @@ html[data-theme="light"] .ob-dots i { background: #55627a; }
 html[data-theme="light"] .ob-dots i.on { background: #e8c97a; }
 html[data-theme="light"] .ob-actions .btn-ghost,
 html[data-theme="light"] .yb-actions .btn-ghost,
+html[data-theme="light"] .pm-actions .btn-ghost,
 html[data-theme="light"] .yb-close { color: #a9b6cc; }
 html[data-theme="light"] .ob-actions .btn-primary,
-html[data-theme="light"] .yb-actions .btn-primary {
+html[data-theme="light"] .yb-actions .btn-primary,
+html[data-theme="light"] .pm-actions .btn-primary {
   background: linear-gradient(135deg, #1d4ed8, #0e7490);
   border-color: rgba(120, 180, 255, 0.55);
   color: #f2f7ff;
