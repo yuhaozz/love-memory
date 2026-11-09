@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109u';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109v';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -340,6 +340,7 @@
       reply_to: r.reply_to || null,
       reactions: r.reactions || {},
       recalled: !!r.recalled,
+      read_ts: Number(r.read_ts) || 0,
     };
   }
 
@@ -385,8 +386,20 @@
         reply_to: m.reply_to || null,
         reactions: m.reactions || {},
         recalled: !!m.recalled,
+        ...(m.read_ts ? { read_ts: m.read_ts } : {}),
       }, { onConflict: 'id' }));
       return m.id;
+    },
+    // ---- 已读回执：把我收到的消息标记为已读（列 read_ts 缺失时静默跳过）----
+    async markRead(code, user) {
+      try {
+        await sb.from('lm_messages')
+          .update({ read_ts: Date.now() })
+          .eq('couple', code)
+          .neq('sender', user)
+          .in('kind', ['text', 'image', 'file', 'audio'])
+          .is('read_ts', null);
+      } catch { /* 还没执行 ALTER 时忽略 */ }
     },
     async saveCouple(c) {
       ck(await sb.from('lm_couples').update({ since: c.since, members: c.members }).eq('code', c.code));
@@ -625,6 +638,26 @@
     chatUnread = 0;
     const dot = $('chatDot');
     if (dot) dot.hidden = true;
+    markPartnerRead();
+  }
+
+  /* 打开私信即把TA发来的消息标为已读，让我方气泡显示「已读」*/
+  let lastReadPing = 0;
+  function markPartnerRead() {
+    if (!couple || !me) return;
+    const now = Date.now();
+    if (now - lastReadPing < 8000) return;
+    lastReadPing = now;
+    if (cloudOn()) {
+      C.markRead(couple.code, me.u).catch(() => { });
+      return;
+    }
+    const list = loadMsgs(couple.code);
+    let changed = false;
+    list.forEach((m) => {
+      if (m.sender !== me.u && !m.read_ts) { m.read_ts = now; changed = true; }
+    });
+    if (changed) saveMsgs(couple.code, list);
   }
 
   /* ---------------- 状态 ---------------- */
@@ -2539,6 +2572,7 @@
             ${quote}
             ${body}
             <span class="chat-time">${fmtTs(m.ts)}</span>
+            ${mine && !m.recalled ? `<span class="chat-read${m.read_ts ? ' on' : ''}">${m.read_ts ? '已读' : '未读'}</span>` : ''}
             ${ops}
             ${reactChips}
           </div>

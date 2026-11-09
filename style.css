@@ -2380,6 +2380,26 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   letter-spacing: 0.12em;
   color: var(--white-faint);
 }
+
+/* 已读回执：我方消息右下角 */
+.chat-bubble .chat-time { display: inline-block; }
+.chat-read {
+  display: inline-block;
+  margin: 6px 0 0 8px;
+  padding: 0 6px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 15px;
+  letter-spacing: 0.08em;
+  color: var(--white-faint);
+  border: 1px solid rgba(160, 190, 225, 0.22);
+}
+.chat-read.on {
+  color: #6ee7b7;
+  border-color: rgba(110, 231, 183, 0.45);
+  background: rgba(110, 231, 183, 0.08);
+}
 .chat-row.mine .chat-time { text-align: right; }
 .chat-img { display: block; }
 .chat-img img {
