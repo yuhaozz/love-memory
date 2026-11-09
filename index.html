@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>银河之约</title>
-<link rel="stylesheet" href="style.css?v=20261107i" />
+<link rel="stylesheet" href="style.css?v=20261109b" />
 </head>
 <body>
 
@@ -414,6 +414,7 @@
     </div>
     <nav class="app-tabs" id="appTabs">
       <button type="button" class="app-tab active" data-tab="today">今日</button>
+      <button type="button" class="app-tab" data-tab="chat">私信<span class="tab-dot" id="chatDot" hidden></span></button>
       <button type="button" class="app-tab" data-tab="diary">日记</button>
       <button type="button" class="app-tab" data-tab="photos">照片</button>
       <button type="button" class="app-tab" data-tab="timeline">足迹</button>
@@ -453,6 +454,22 @@
   </div>
 </div>
 
+<!-- 语音通话 -->
+<div class="call-overlay" id="callOverlay" hidden>
+  <div class="call-card">
+    <div class="call-avatar" id="callAvatar">?</div>
+    <div class="call-name" id="callName">—</div>
+    <div class="call-status" id="callStatus">正在呼叫…</div>
+    <div class="call-timer" id="callTimerText" hidden>00:00</div>
+    <div class="call-actions">
+      <button type="button" class="call-btn accept" id="callAccept" hidden>接听</button>
+      <button type="button" class="call-btn" id="callMute" hidden>静音</button>
+      <button type="button" class="call-btn hang" id="callHang">挂断</button>
+    </div>
+  </div>
+  <audio id="callAudio" autoplay></audio>
+</div>
+
 <!-- 照片查看器 -->
 <div class="viewer" id="viewer" hidden>
   <img id="viewerImg" src="" alt="" />
@@ -462,6 +479,6 @@
 <!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="script.js?v=20261107i"></script>
-<script src="app.js?v=20261109a"></script>
+<script src="app.js?v=20261109b"></script>
 </body>
 </html>
