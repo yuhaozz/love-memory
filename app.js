@@ -34,6 +34,19 @@
     chatSeen: (code) => 'ot_chatseen_' + code,
   };
   const MOODS = ['晴朗', '微风', '多云', '小雨', '开心', '想念', '平静', '激动', '疲惫', '治愈'];
+  const THEMES = ['deep', 'light', 'warm'];
+  const THEME_LABEL = { deep: '深空', light: '极简白', warm: '胶片暖' };
+  const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'mp3', 'm4a', 'wav', 'ogg',
+    'mp4', 'mov', 'pdf', 'zip', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'json'];
+
+  /* ---- 主题皮肤：进页面立刻生效，首页与应用共用 ---- */
+  function applyTheme(t) {
+    const theme = THEMES.includes(t) ? t : 'deep';
+    if (theme === 'deep') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('ot_theme', theme); } catch { /* 隐私模式忽略 */ }
+  }
+  try { applyTheme(localStorage.getItem('ot_theme') || 'deep'); } catch { applyTheme('deep'); }
 
   /* ---------------- 基础存储（本地模式 + 云端模式的缓存） ---------------- */
   const store = {
@@ -152,6 +165,96 @@
       r.readAsDataURL(file);
     });
   }
+  function fileExt(name) {
+    return String(name || '').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6);
+  }
+  function extAllowed(name, type) {
+    if (String(type || '').startsWith('image/')) return true;
+    if (String(type || '').startsWith('audio/')) return true;
+    return ALLOWED_EXT.includes(fileExt(name));
+  }
+  function fmtDuration(sec) {
+    const s = Math.max(0, Math.round(Number(sec) || 0));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+  function download(blob, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  function monthLabel(ym) {
+    const [y, m] = ym.split('-');
+    return `${y} · ${m} 月`;
+  }
+
+  /* ---- 纪念日日历 .ics：每一年重复，UID 稳定，导入一次就能长期用 ---- */
+  function icsEscape(s) {
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+  function icsDate(d) {
+    return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  }
+  function icsStamp() {
+    const d = new Date();
+    return icsDate(d) + 'T' + String(d.getUTCHours()).padStart(2, '0') +
+      String(d.getUTCMinutes()).padStart(2, '0') + String(d.getUTCSeconds()).padStart(2, '0') + 'Z';
+  }
+  function addDays(dateStr, n) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d;
+  }
+  function makeICS() {
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Galactic Promise//love-memory//CN',
+      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'X-WR-CALNAME:' + icsEscape('银河之约 · 我们的纪念日'),
+      'X-WR-TIMEZONE:Asia/Shanghai',
+      'REFRESH-INTERVAL;VALUE=DURATION:PT12H',
+    ];
+    const ev = (uid, start, end, summary, desc, yearly) => {
+      lines.push('BEGIN:VEVENT');
+      lines.push('UID:' + uid);
+      lines.push('DTSTAMP:' + icsStamp());
+      lines.push('DTSTART;VALUE=DATE:' + start);
+      lines.push('DTEND;VALUE=DATE:' + end);
+      if (yearly) lines.push('RRULE:FREQ=YEARLY');
+      lines.push('SUMMARY:' + icsEscape(summary));
+      lines.push('DESCRIPTION:' + icsEscape(desc));
+      lines.push('TRANSP:TRANSPARENT');
+      lines.push('END:VEVENT');
+    };
+    const code = couple.code;
+    if (couple.since) {
+      const since = couple.since;
+      ev(`lm-${code}-anniv@galactic-promise`, icsDate(addDays(since, 0)), icsDate(addDays(since, 1)),
+        '在一起纪念日', '从这一天开始，我们的时间合并在了一起。', true);
+      [100, 520, 1000, 1314].forEach((n) => {
+        const d = addDays(since, n - 1);
+        ev(`lm-${code}-day${n}@galactic-promise`, icsDate(d), icsDate(addDays(icsDate(d), 1)),
+          `在一起第 ${n} 天`, '一个值得记住的数字。', false);
+      });
+    }
+    const users = loadUsers();
+    for (const m of couple.members) {
+      const u = users[m];
+      if (!u || !u.bday) continue;
+      const d = new Date(u.bday + 'T00:00:00');
+      if (isNaN(d)) continue;
+      const next = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      if (next.getFullYear() < 1900) continue;
+      ev(`lm-${code}-bday-${m}@galactic-promise`, icsDate(next), icsDate(addDays(icsDate(next), 1)),
+        `${u.nick} 的生日`, '记得准备一点小惊喜。', true);
+    }
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
 
   /* ============================================================
      云端数据层（Supabase）
@@ -239,10 +342,10 @@
       const r = ck(await sb.from('lm_entries').select('*').eq('couple', code).order('ts', { ascending: false }).limit(1000));
       return (r || []).map(rowToEntry);
     },
-    // ---- 私信：文字 / 图片 / 文件；通话信令也存在这张表里（kind = signal）----
+    // ---- 私信：文字 / 图片 / 文件 / 语音留言；通话信令也存在这张表里（kind = signal）----
     async fetchMsgs(code) {
       const r = ck(await sb.from('lm_messages').select('*').eq('couple', code)
-        .in('kind', ['text', 'image', 'file'])
+        .in('kind', ['text', 'image', 'file', 'audio'])
         .order('ts', { ascending: false }).limit(200));
       return (r || []).map(rowToMsg).reverse();
     },
@@ -457,6 +560,7 @@
   let chatBusy = false;
   let callIsVideo = false;
   let remoteStream = null;
+  const rec = { recorder: null, chunks: [], stream: null, startAt: 0, timer: null, auto: null, cancel: false };
 
   const authModal = $('authModal');
   const appEl = $('app');
@@ -690,6 +794,7 @@
     else switchAppTab(curTab);
     startPolling();
     startChatPolling();
+    if (couple) showOnboard(false);
   }
   function closeApp() {
     appEl.hidden = true;
@@ -697,6 +802,7 @@
     stopPolling();
     stopChatPolling();
     if (callState !== 'idle') endCall();
+    if (rec.recorder && rec.recorder.state !== 'inactive') stopRecord(true);
   }
   $('btnExit').addEventListener('click', closeApp);
   $('btnLogout').addEventListener('click', () => {
@@ -917,24 +1023,35 @@
     main.innerHTML = html + '</div>';
   }
 
-  /* ---- 照片：所有照片汇总 ---- */
+  /* ---- 照片：按月份聚合 ---- */
   function renderPhotos(main) {
     const users = userMap();
     const list = entries().slice().sort((a, b) => b.ts - a.ts);
-    const cells = [];
+    const groups = new Map();   // 'YYYY-MM' -> [cell html]
     for (const e of list) {
       (e.photos || []).forEach((src, i) => {
         const u = users[e.author];
-        cells.push(`
+        const k = e.date.slice(0, 7);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(`
           <figure class="photo-cell">
             <img src="${src}" data-act="view" data-id="${e.id}" data-i="${i}" loading="lazy" alt="">
             <figcaption><span>${esc(u ? u.nick : e.author)}</span><span>${e.date.slice(5).replace('-', '.')}</span></figcaption>
           </figure>`);
       });
     }
-    main.innerHTML = cells.length
-      ? `<div class="photos-grid">${cells.join('')}</div>`
-      : emptyState('还没有照片', '写日记时附上照片，这里会汇集成册。');
+    if (!groups.size) {
+      main.innerHTML = emptyState('还没有照片', '写日记时附上照片，这里会汇集成册。');
+      return;
+    }
+    main.innerHTML = [...groups.entries()].map(([k, cells]) => `
+      <section class="ph-month">
+        <div class="ph-month-head">
+          <span class="pm-label">${monthLabel(k)}</span>
+          <span class="pm-count">${cells.length} 张</span>
+        </div>
+        <div class="photos-grid">${cells.join('')}</div>
+      </section>`).join('');
   }
 
   /* ---- 足迹：时间线 ---- */
@@ -990,6 +1107,10 @@
       ? '数据保存在云端（Supabase），两人各自的设备实时同步。仍建议定期「导出我们的数据」做备份。'
       : '所有数据只保存在这台设备的浏览器里。换电脑或清除浏览器数据前，请先「导出我们的数据」备份。';
 
+    const currentTheme = (() => {
+      try { return localStorage.getItem('ot_theme') || 'deep'; } catch { return 'deep'; }
+    })();
+
     main.innerHTML = `
       <div class="us-grid">
         ${profile(me, true)}
@@ -1007,9 +1128,24 @@
         <div class="us-row"><span class="us-k">存储方式</span><span class="us-v">${cloudOn() ? '云端同步' : '本机浏览器'}</span></div>
       </div>
 
+      <div class="us-panel">
+        <div class="us-row">
+          <span class="us-k">界面皮肤</span>
+          <span class="us-v skin-chips" id="skinChips">
+            ${THEMES.map((t) => `<button type="button" class="skin-chip${t === currentTheme ? ' on' : ''}" data-skin="${t}">${THEME_LABEL[t]}</button>`).join('')}
+          </span>
+        </div>
+        <div class="us-row"><span class="us-k">说明</span><span class="us-v us-hint">三种皮肤首页与空间同步切换：深空是默认星空，极简白适合白天，胶片暖像一封旧信。</span></div>
+      </div>
+
       <div class="us-actions">
+        <button type="button" class="btn-ghost" id="usYearbook">生成回忆年鉴</button>
+        <button type="button" class="btn-ghost" id="usIcs">导出纪念日日历</button>
         <button type="button" class="btn-ghost" id="usExport">导出我们的数据</button>
         <button type="button" class="btn-ghost danger" id="usUnpair">解除配对</button>
+      </div>
+      <div class="us-actions">
+        <button type="button" class="btn-ghost" id="usGuide">再看一次新手引导</button>
       </div>
       <p class="us-note">${noteText}</p>`;
 
@@ -1025,22 +1161,40 @@
         saveCouples(couples);
       }
     });
+    $('skinChips').addEventListener('click', (e) => {
+      const b = e.target.closest('.skin-chip');
+      if (!b) return;
+      applyTheme(b.dataset.skin);
+      document.querySelectorAll('.skin-chip').forEach((x) => x.classList.toggle('on', x === b));
+    });
+
+    $('usYearbook').addEventListener('click', () => showYearbook(true));
+    $('usGuide').addEventListener('click', () => showOnboard(true));
+    $('usIcs').addEventListener('click', () => {
+      const blob = new Blob([makeICS()], { type: 'text/calendar;charset=utf-8' });
+      download(blob, `我们的纪念日-${couple.code}.ics`);
+    });
+
     $('usExport').addEventListener('click', () => {
+      const safeUser = (m) => {
+        const u = users[m] || { u: m };
+        const copy = Object.assign({}, u);
+        delete copy.pw;
+        return copy;
+      };
       const data = {
         exportedAt: new Date().toISOString(),
+        app: '银河之约',
         couple,
-        members: couple.members.map((m) => {
-          const { pw, _id, ...rest } = users[m] || { u: m };
-          return rest;
-        }),
+        members: couple.members.map(safeUser),
         entries: list,
+        messages: loadMsgs(couple.code),
+        photos: list.reduce((arr, e) => arr.concat((e.photos || []).map((src, i) => ({
+          entry: e.id, date: e.date, author: e.author, index: i, url: src,
+        }))), []),
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `our-space-${couple.code}-${todayKey()}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      download(blob, `our-space-${couple.code}-${todayKey()}.json`);
     });
     $('usUnpair').addEventListener('click', async () => {
       if (!confirm('解除配对后，两人都会退出这个空间（记录仍会保留）。确定吗？')) return;
@@ -1067,6 +1221,212 @@
     });
   }
 
+  /* ---- 回忆年鉴：1080 × 1350 的图片，可保存分享 ---- */
+  function yearbookData() {
+    const list = entries();
+    const year = new Date().getFullYear();
+    const mine = list.filter((e) => String(e.date || '').startsWith(String(year)));
+    if (!mine.length) return null;
+    const photoCount = mine.reduce((n, e) => n + (e.photos || []).length, 0);
+    const moodMap = {};
+    for (const e of mine) if (e.mood) moodMap[e.mood] = (moodMap[e.mood] || 0) + 1;
+    const topMood = Object.keys(moodMap).sort((a, b) => moodMap[b] - moodMap[a])[0] || '—';
+    const monthMap = {};
+    for (const e of mine) {
+      const m = Number(e.date.slice(5, 7));
+      if (m) monthMap[m] = (monthMap[m] || 0) + 1;
+    }
+    const topMonth = Object.keys(monthMap).sort((a, b) => monthMap[b] - monthMap[a])[0] || '';
+    const users = loadUsers();
+    const authorMap = {};
+    for (const e of mine) authorMap[e.author] = (authorMap[e.author] || 0) + 1;
+    const topAuthor = Object.keys(authorMap).sort((a, b) => authorMap[b] - authorMap[a])[0] || '';
+    const topAuthorNick = (users[topAuthor] && users[topAuthor].nick) || '';
+    const since = couple && couple.since ? new Date(couple.since + 'T00:00:00') : null;
+    const togetherDays = since && !isNaN(since) ? Math.max(1, Math.floor((Date.now() - since.getTime()) / 86400000) + 1) : 0;
+    const recordedDays = new Set(mine.map((e) => e.date)).size;
+    return {
+      year, mine, photoCount, topMood, topMonth, topAuthorNick,
+      topAuthorCount: authorMap[topAuthor] || 0, togetherDays, recordedDays,
+    };
+  }
+
+  function buildYearbook() {
+    const s = yearbookData();
+    if (!s) return null;
+    const W = 1080, H = 1350;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#05070f');
+    g.addColorStop(0.45, '#0a1226');
+    g.addColorStop(1, '#04060e');
+    x.fillStyle = g;
+    x.fillRect(0, 0, W, H);
+
+    const glow = x.createRadialGradient(W * 0.72, H * 0.16, 0, W * 0.72, H * 0.16, W * 0.62);
+    glow.addColorStop(0, 'rgba(56, 130, 220, 0.28)');
+    glow.addColorStop(0.55, 'rgba(60, 70, 150, 0.10)');
+    glow.addColorStop(1, 'rgba(4, 6, 14, 0)');
+    x.fillStyle = glow;
+    x.fillRect(0, 0, W, H);
+
+    let seed = 20261109;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < 180; i++) {
+      const px = rnd() * W, py = rnd() * H, r = 0.7 + rnd() * 1.9;
+      x.globalAlpha = 0.06 + rnd() * 0.3;
+      x.fillStyle = rnd() > 0.86 ? '#e8c97a' : '#dbeafe';
+      x.beginPath(); x.arc(px, py, r, 0, 6.2832); x.fill();
+    }
+    x.globalAlpha = 1;
+
+    x.strokeStyle = 'rgba(126, 148, 184, 0.22)';
+    x.lineWidth = 1.5;
+    x.strokeRect(52, 52, W - 104, H - 104);
+    x.strokeStyle = 'rgba(232, 201, 122, 0.65)';
+    x.lineWidth = 2;
+    const tick = (tx, ty, dx, dy) => {
+      x.beginPath(); x.moveTo(tx, ty); x.lineTo(tx + dx, ty); x.moveTo(tx, ty); x.lineTo(tx, ty + dy); x.stroke();
+    };
+    tick(52, 52, 34, 34); tick(W - 52, 52, -34, 34);
+    tick(52, H - 52, 34, -34); tick(W - 52, H - 52, -34, -34);
+
+    x.textBaseline = 'alphabetic';
+    x.textAlign = 'left';
+    x.letterSpacing = '6px';
+    x.fillStyle = 'rgba(152, 166, 188, 0.85)';
+    x.font = '500 21px "SF Mono", Consolas, monospace';
+    x.fillText('GALACTIC PROMISE · MEMORY YEARBOOK', 96, 162);
+    x.letterSpacing = '0px';
+
+    x.fillStyle = '#e9eff8';
+    x.font = '200 88px "PingFang SC", "Microsoft YaHei", sans-serif';
+    x.fillText('回忆年鉴', 94, 300);
+
+    x.fillStyle = '#e8c97a';
+    x.font = '300 60px "SF Mono", Consolas, monospace';
+    x.fillText(String(s.year), 96, 386);
+
+    x.strokeStyle = 'rgba(232, 201, 122, 0.5)';
+    x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(96, 424); x.lineTo(96 + 210, 424); x.stroke();
+
+    x.fillStyle = 'rgba(205, 216, 232, 0.9)';
+    x.font = '300 26px "PingFang SC", "Microsoft YaHei", sans-serif';
+    x.fillText('这一年，我们把普通的日子，写成了只属于我们的星河。', 96, 478);
+
+    const rows = [
+      ['一起走过', (s.togetherDays ? `${s.togetherDays} 天` : '—')],
+      ['写下日记', `${s.mine.length} 篇`],
+      ['收藏照片', `${s.photoCount} 张`],
+      ['记录天数', `${s.recordedDays} 天`],
+      ['最常心情', s.topMood],
+      ['最活跃的月份', s.topMonth ? `${Number(s.topMonth)} 月` : '—'],
+      ['写得最多的人', s.topAuthorNick ? `${s.topAuthorNick} · ${s.topAuthorCount} 篇` : '—'],
+    ];
+    let y = 570;
+    for (const [k, v] of rows) {
+      x.textAlign = 'left';
+      x.fillStyle = 'rgba(152, 166, 188, 0.9)';
+      x.letterSpacing = '2px';
+      x.font = '400 23px "SF Mono", Consolas, monospace';
+      x.fillText(k, 96, y);
+      x.letterSpacing = '0px';
+      x.textAlign = 'right';
+      x.fillStyle = '#e9eff8';
+      x.font = '300 40px "PingFang SC", "Microsoft YaHei", sans-serif';
+      x.fillText(v, W - 96, y + 2);
+      x.strokeStyle = 'rgba(126, 148, 184, 0.16)';
+      x.lineWidth = 1;
+      x.beginPath(); x.moveTo(96, y + 34); x.lineTo(W - 96, y + 34); x.stroke();
+      y += 86;
+    }
+
+    x.textAlign = 'left';
+    x.fillStyle = 'rgba(232, 201, 122, 0.92)';
+    x.font = '300 34px "PingFang SC", "Microsoft YaHei", sans-serif';
+    x.fillText('愿每一次回头，都有一束光。', 96, H - 176);
+
+    x.fillStyle = 'rgba(152, 166, 188, 0.75)';
+    x.letterSpacing = '3px';
+    x.font = '400 19px "SF Mono", Consolas, monospace';
+    x.fillText(`银河之约 · 配对码 ${couple.code}`, 96, H - 106);
+    x.textAlign = 'right';
+    x.fillText('MADE WITH STARDUST', W - 96, H - 106);
+    x.letterSpacing = '0px';
+
+    return c.toDataURL('image/png');
+  }
+
+  let ybUrl = '';
+  const ybEl = $('yearbook');
+
+  function showYearbook(regen) {
+    if (regen || !ybUrl) {
+      const url = buildYearbook();
+      if (!url) { alert('今年还没有记录。先写下一篇，再来生成回忆年鉴吧。'); return; }
+      ybUrl = url;
+      $('ybImg').src = url;
+      const name = `回忆年鉴-${yearbookData().year}-${couple.code}.png`;
+      $('ybDownload').setAttribute('download', name);
+      $('ybDownload').setAttribute('href', url);
+    }
+    ybEl.hidden = false;
+  }
+  $('ybClose').addEventListener('click', () => { ybEl.hidden = true; });
+  ybEl.addEventListener('click', (e) => { if (e.target === ybEl) ybEl.hidden = true; });
+  $('ybAgain').addEventListener('click', () => { ybUrl = ''; showYearbook(true); });
+  $('ybDownload').addEventListener('click', (e) => { if (!ybUrl) e.preventDefault(); });
+
+  /* ---- 首次进入的三步引导 ---- */
+  const ONBOARD_STEPS = [
+    {
+      title: '记录',
+      text: '把普通的一天写进日记：一句心情、一张随手拍，都值得被留下。打开「今日」，就能写下你们的第一篇。',
+    },
+    {
+      title: '相伴',
+      text: '想说的话不必等到见面。「私信」里可以发文字、照片、文件，也能录一段语音留言；想念的时候，一通语音或视频，让距离短暂失效。',
+    },
+    {
+      title: '回望',
+      text: '照片会按月汇成相册，足迹会连成时间线。去「我们」里生成一张回忆年鉴、导出纪念日日历，让以后有迹可循。',
+    },
+  ];
+  let obIdx = 0;
+
+  function renderOb() {
+    const s = ONBOARD_STEPS[obIdx];
+    $('obStep').textContent = `STEP 0${obIdx + 1} / 03`;
+    $('obTitle').textContent = s.title;
+    $('obText').textContent = s.text;
+    $('obDots').innerHTML = ONBOARD_STEPS.map((_, i) => `<i class="${i === obIdx ? 'on' : ''}"></i>`).join('');
+    $('obNext').textContent = obIdx === ONBOARD_STEPS.length - 1 ? '开始记录 →' : '下一步 →';
+  }
+  function showOnboard(force) {
+    if (!force) {
+      try { if (localStorage.getItem('ot_onboarded') === '1') return; } catch { /* 忽略 */ }
+    }
+    obIdx = 0;
+    renderOb();
+    $('onboard').hidden = false;
+  }
+  function finishOnboard() {
+    $('onboard').hidden = true;
+    try { localStorage.setItem('ot_onboarded', '1'); } catch { /* 忽略 */ }
+  }
+  $('obSkip').addEventListener('click', finishOnboard);
+  $('obNext').addEventListener('click', () => {
+    if (obIdx < ONBOARD_STEPS.length - 1) { obIdx++; renderOb(); }
+    else finishOnboard();
+  });
+
   /* ---------------- 私信 ---------------- */
   function chatBubbles(list) {
     if (!list.length) {
@@ -1080,6 +1440,11 @@
       let body = '';
       if (m.kind === 'image' && url) {
         body = `<a class="chat-img" href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" loading="lazy" alt=""></a>`;
+      } else if (m.kind === 'audio' && url) {
+        body = `<div class="chat-voice">
+          <audio class="chat-audio" controls preload="metadata" src="${esc(url)}"></audio>
+          <span class="chat-adur">语音留言 · ${fmtDuration(m.text)}</span>
+        </div>`;
       } else if (m.kind === 'file' && url) {
         body = `<a class="chat-file" href="${esc(url)}" target="_blank" rel="noopener" download="${esc(m.name || 'file')}">
           <span class="cf-ic">▤</span>
@@ -1111,7 +1476,9 @@
         </div>
         ${!chatReady ? '<div class="waiting-bar">私信还没有在云端启用：请先在 Supabase 运行 说明.md 里的 lm_messages 建表 SQL。</div>' : ''}
         <div class="chat-list" id="chatList">${chatBubbles(list)}</div>
+        <div class="rec-hint" id="recHint" hidden><i></i><span>正在录音</span><b id="recTime">0:00</b><em>再点一下结束 · 最长 60 秒</em></div>
         <form class="chat-bar" id="chatForm">
+          <button type="button" class="chat-tool chat-mic" id="chatMic" title="语音留言：点一下开始，再点一下发送">◉</button>
           <label class="chat-tool" title="发送图片">▣<input type="file" id="chatImg" accept="image/*" hidden /></label>
           <label class="chat-tool" title="发送文件">▤<input type="file" id="chatFile" hidden /></label>
           <input class="chat-input" id="chatInput" maxlength="500" placeholder="说点什么…" autocomplete="off" />
@@ -1124,6 +1491,7 @@
     $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); sendText(); });
     $('chatImg').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendImage(f); });
     $('chatFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendFile(f); });
+    $('chatMic').addEventListener('click', toggleRecord);
     $('chatCall').addEventListener('click', () => startCall(false));
     $('chatVideoCall').addEventListener('click', () => startCall(true));
     const listEl = $('chatList');
@@ -1183,6 +1551,8 @@
 
   async function sendImage(file) {
     if (!file || chatBusy || !couple) return;
+    if (!String(file.type || '').startsWith('image/')) { alert('只能发送图片文件。'); return; }
+    if (file.size > 20 * 1048576) { alert('图片不能超过 20MB。'); return; }
     chatBusy = true;
     try {
       const dataUrl = await compressImage(file);
@@ -1198,14 +1568,116 @@
 
   async function sendFile(file) {
     if (!file || chatBusy || !couple) return;
+    if (!extAllowed(file.name, file.type)) {
+      alert('暂不支持这种格式。可以发送图片、音频、视频、PDF、压缩包、Office 文档或 txt。');
+      return;
+    }
     if (cloudOn() && file.size > 15 * 1048576) { alert('文件不能超过 15MB。'); return; }
-    if (!cloudOn() && file.size > 2 * 1048576) { alert('本地模式下文件需小于 2MB。'); return; }
+    if (!cloudOn() && file.size > 2 * 1048576) { alert('本机存储模式下文件需小于 2MB。'); return; }
     chatBusy = true;
     try {
       const dataUrl = await fileToDataUrl(file);
       let url = dataUrl;
       if (cloudOn()) url = await C.uploadChatFile(dataUrl, file.name, file.type || 'application/octet-stream');
       await storeMsg({ id: newMsgId(), sender: me.u, kind: 'file', text: '', url, name: file.name, size: file.size, ts: Date.now() });
+    } catch (e) {
+      chatSendError(e);
+    } finally {
+      chatBusy = false;
+    }
+  }
+
+  /* ---- 异步语音留言：MediaRecorder 录音 → Storage → kind=audio ---- */
+  function micBtn() { return $('chatMic'); }
+
+  async function toggleRecord() {
+    if (!couple) return;
+    if (rec.recorder && rec.recorder.state !== 'inactive') { stopRecord(false); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof window.MediaRecorder === 'undefined') {
+      alert('这台设备的浏览器不支持录音。可以先发文字或照片。');
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      alert('没有拿到麦克风权限。请在浏览器设置里允许录音后再试。');
+      return;
+    }
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+      : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
+    try {
+      rec.recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      alert('录音启动失败，请换一个浏览器试试。');
+      return;
+    }
+    rec.stream = stream;
+    rec.chunks = [];
+    rec.cancel = false;
+    rec.startAt = Date.now();
+    rec.recorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+    rec.recorder.onstop = () => finishRecord();
+    rec.recorder.start();
+
+    const b = micBtn();
+    if (b) { b.classList.add('recording'); b.textContent = '■'; }
+    if ($('recHint')) $('recHint').hidden = false;
+    const tick = () => {
+      if ($('recTime') && rec.startAt) $('recTime').textContent = fmtDuration((Date.now() - rec.startAt) / 1000);
+    };
+    rec.timer = setInterval(tick, 500);
+    tick();
+    rec.auto = setTimeout(() => { if (rec.recorder && rec.recorder.state === 'recording') stopRecord(false); }, 60000);
+  }
+
+  function stopRecord(cancel) {
+    rec.cancel = !!cancel;
+    if (rec.timer) { clearInterval(rec.timer); rec.timer = null; }
+    if (rec.auto) { clearTimeout(rec.auto); rec.auto = null; }
+    try {
+      if (rec.recorder && rec.recorder.state !== 'inactive') rec.recorder.stop();
+      else finishRecord();
+    } catch { finishRecord(); }
+  }
+
+  function releaseMic() {
+    if (rec.stream) {
+      rec.stream.getTracks().forEach((t) => t.stop());
+      rec.stream = null;
+    }
+  }
+
+  async function finishRecord() {
+    releaseMic();
+    const sec = rec.startAt ? Math.round((Date.now() - rec.startAt) / 1000) : 0;
+    const chunks = rec.chunks.slice();
+    const mimeType = (rec.recorder && rec.recorder.mimeType) || 'audio/webm';
+    const wasCancel = rec.cancel;
+    rec.recorder = null;
+    rec.chunks = [];
+    rec.startAt = 0;
+    const b = micBtn();
+    if (b) { b.classList.remove('recording'); b.textContent = '◉'; }
+    if ($('recHint')) $('recHint').hidden = true;
+    if (wasCancel || !chunks.length || sec < 1 || !couple) return;
+
+    const blob = new Blob(chunks, { type: mimeType });
+    const limit = cloudOn() ? 15 * 1048576 : 2 * 1048576;
+    if (blob.size > limit) { alert('这段语音太长了，换短一点再试。'); return; }
+    chatBusy = true;
+    try {
+      const dataUrl = await fileToDataUrl(blob);
+      let url = dataUrl;
+      if (cloudOn()) {
+        const ext = mimeType.indexOf('mp4') >= 0 ? 'm4a' : 'webm';
+        url = await C.uploadChatFile(dataUrl, `voice-${me.u}-${Date.now()}.${ext}`, mimeType);
+      }
+      await storeMsg({
+        id: newMsgId(), sender: me.u, kind: 'audio', text: String(sec),
+        url, name: '语音留言', size: blob.size, ts: Date.now(),
+      });
     } catch (e) {
       chatSendError(e);
     } finally {
@@ -1585,8 +2057,15 @@
     renderThumbs();
   });
   $('editorFile').addEventListener('change', async (e) => {
-    const files = [...e.target.files].slice(0, Math.max(0, 9 - editorPhotos.length));
+    const picked = [...e.target.files];
+    const room = Math.max(0, 9 - editorPhotos.length);
+    if (picked.length > room) {
+      alert(`一篇日记最多 9 张照片，这次先加入前 ${room} 张。`);
+    }
+    const files = picked.filter((f) => String(f.type || '').startsWith('image/')).slice(0, room);
+    if (picked.length && !files.length) alert('只能添加图片文件。');
     for (const f of files) {
+      if (f.size > 20 * 1048576) { alert(`「${f.name}」超过 20MB，已跳过。`); continue; }
       try { editorPhotos.push(await compressImage(f)); } catch { /* 跳过坏图 */ }
     }
     e.target.value = '';
@@ -1726,6 +2205,10 @@
   /* ---------------- 启动 ---------------- */
   document.addEventListener('DOMContentLoaded', () => {
     if (cloudOn()) cloudInit();
+    // PWA：注册 Service Worker，支持「添加到主屏幕」
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* 离线能力不可用时静默 */ });
+    }
     const params = new URLSearchParams(location.search);
     if (params.get('demo') === '1' && !cloudOn()) {
       seedDemo();
