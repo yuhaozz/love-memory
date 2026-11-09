@@ -1,6 +1,6 @@
 /* 银河之约 · Service Worker
    只缓存同源静态资源；接口与云端数据一律直连网络。 */
-const VERSION = 'lm-20261109o';
+const VERSION = 'lm-20261109p';
 const CORE = [
   './',
   'index.html',
