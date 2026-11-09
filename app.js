@@ -336,6 +336,9 @@
       id: r.id, sender: r.sender, kind: r.kind || 'text',
       text: r.text || '', url: r.url || '',
       name: r.name || '', size: Number(r.size) || 0, ts: Number(r.ts) || 0,
+      reply_to: r.reply_to || null,
+      reactions: r.reactions || {},
+      recalled: !!r.recalled,
     };
   }
 
@@ -374,11 +377,14 @@
       return (r || []).map(rowToMsg);
     },
     async saveMsg(m, code) {
-      ck(await sb.from('lm_messages').insert({
+      ck(await sb.from('lm_messages').upsert({
         id: m.id, couple: code, couple_token: store.read(LS.token, ''),
         sender: m.sender, kind: m.kind, text: m.text || '',
         url: m.url || '', name: m.name || '', size: m.size || 0, ts: m.ts,
-      }));
+        reply_to: m.reply_to || null,
+        reactions: m.reactions || {},
+        recalled: !!m.recalled,
+      }, { onConflict: 'id' }));
       return m.id;
     },
     async saveCouple(c) {
@@ -627,6 +633,7 @@
 
   /* ---- 私信 / 通话状态 ---- */
   let chatDraft = '';
+  let replyDraft = null;      // {id, kind, text, url, sender, nick} 待发送时带上
   let chatSeen = 0;
   let chatUnread = 0;
   let chatTimer = null;
@@ -1145,12 +1152,14 @@
   /* ---- 足迹：时间线 ---- */
   function renderTimeline(main) {
     const users = userMap();
-    const list = entries().slice().sort((a, b) => b.ts - a.ts);
+    const all = entries().slice();
+    const list = all.slice().sort((a, b) => b.ts - a.ts);
+    const yearPanel = yearbookAutoPanel(all);
     if (!list.length) {
-      main.innerHTML = emptyState('足迹还是空白', '每一次记录都会成为时间线上的一束光。');
+      main.innerHTML = yearPanel + emptyState('足迹还是空白', '每一次记录都会成为时间线上的一束光。');
       return;
     }
-    main.innerHTML = `<div class="tl">${list.map((e) => {
+    main.innerHTML = yearPanel + `<div class="tl">${list.map((e) => {
       const u = users[e.author];
       return `
         <div class="tl-item${e.author === me.u ? ' me' : ''}">
@@ -1167,6 +1176,68 @@
           </div>
         </div>`;
     }).join('')}</div>`;
+  }
+
+  /* ---- 自动年鉴面板：足迹页顶部的实时回忆（每次刷新自动更新）---- */
+  function yearbookAutoPanel(list) {
+    if (!list.length) return '';
+    const now = new Date();
+    const y = now.getFullYear();
+    const yStr = String(y);
+    const thisYear = list.filter((e) => (e.date || '').startsWith(yStr + '-'));
+    const users = userMap();
+    const meEntries = thisYear.filter((e) => e.author === me.u);
+    const partnerEntries = partner() ? thisYear.filter((e) => e.author === partner().u) : [];
+    const photoCount = thisYear.reduce((n, e) => n + (e.photos || []).length, 0);
+    const moodMap = {};
+    thisYear.forEach((e) => { if (e.mood) moodMap[e.mood] = (moodMap[e.mood] || 0) + 1; });
+    const moodsSorted = Object.entries(moodMap).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const days = new Set(thisYear.map((e) => e.date));
+    let streak = 0;
+    const d = new Date();
+    if (!days.has(todayKey(d))) d.setDate(d.getDate() - 1);
+    while (days.has(todayKey(d))) { streak++; d.setDate(d.getDate() - 1); }
+    // 共同记录的天数：两人同日都有 entry
+    const bothDays = new Set();
+    if (partner()) {
+      const meDays = new Set(meEntries.map((e) => e.date));
+      const pDays = new Set(partnerEntries.map((e) => e.date));
+      [...meDays].forEach((x) => { if (pDays.has(x)) bothDays.add(x); });
+    }
+    const moodBars = moodsSorted.map(([m, n]) => {
+      const pct = thisYear.length ? Math.round((n / thisYear.length) * 100) : 0;
+      return `<span class="yp-mood"><i style="width:${pct}%"></i>${esc(m)} · ${n}</span>`;
+    }).join('') || '<span class="yp-empty">今年还没有心情标记</span>';
+
+    return `
+      <div class="yearbook-panel">
+        <div class="yp-head">
+          <h3>${y} · 我们的实时回忆</h3>
+          <span class="yp-sub">YEARBOOK · 自动更新</span>
+        </div>
+        <div class="yp-grid">
+          <div class="yp-cell">
+            <span class="yp-num">${thisYear.length}</span>
+            <span class="yp-lbl">篇记录</span>
+          </div>
+          <div class="yp-cell">
+            <span class="yp-num">${photoCount}</span>
+            <span class="yp-lbl">张照片</span>
+          </div>
+          <div class="yp-cell">
+            <span class="yp-num">${streak}</span>
+            <span class="yp-lbl">连续天数</span>
+          </div>
+          <div class="yp-cell">
+            <span class="yp-num">${bothDays.size}</span>
+            <span class="yp-lbl">❤ 都记录了</span>
+          </div>
+          <div class="yp-cell wide">
+            <span class="yp-lbl">心情分布（今年）</span>
+            <div class="yp-moods">${moodBars}</div>
+          </div>
+        </div>
+      </div>`;
   }
 
   /* ---- 约定：每日一问 / 时间胶囊 / 心愿清单 ---- */
@@ -2410,6 +2481,8 @@
   });
 
   /* ---------------- 私信 ---------------- */
+  const CHAT_REACTIONS = ['❤️', '😂', '😍', '😊', '😮', '😢', '🙏', '🎉'];
+
   function chatBubbles(list) {
     if (!list.length) {
       return '<div class="chat-empty">还没有私信。说一句「在吗」，从这里开始。</div>';
@@ -2420,7 +2493,9 @@
       const nick = (u && u.nick) || m.sender;
       const url = safeUrl(m.url);
       let body = '';
-      if (m.kind === 'image' && url) {
+      if (m.recalled) {
+        body = `<div class="chat-recalled">— 此消息已被撤回 —</div>`;
+      } else if (m.kind === 'image' && url) {
         body = `<a class="chat-img" href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" loading="lazy" alt=""></a>`;
       } else if (m.kind === 'audio' && url) {
         body = `<div class="chat-voice">
@@ -2436,12 +2511,153 @@
       } else {
         body = `<div class="chat-text">${esc(m.text).replace(/\n/g, '<br>')}</div>`;
       }
+
+      // 引用块
+      const quote = (!m.recalled && m.reply_to) ? chatQuoteBlock(m.reply_to) : '';
+      // 表情回应
+      const reactChips = chatReactionChips(m, mine);
+
+      // 气泡内操作按钮（hover/active 时显示）
+      const canRecall = mine && !m.recalled && (Date.now() - m.ts) < 120000;
+      const ops = !m.recalled ? `
+        <div class="chat-ops" hidden>
+          <button type="button" class="chat-op" data-op="react" title="表情回应">☺</button>
+          <button type="button" class="chat-op" data-op="quote" title="引用回复">↩</button>
+          ${canRecall ? '<button type="button" class="chat-op danger" data-op="recall" title="撤回（2 分钟内）">✕</button>' : ''}
+        </div>` : '';
+
       return `
-        <div class="chat-row${mine ? ' mine' : ''}">
+        <div class="chat-row${mine ? ' mine' : ''}${m.recalled ? ' recalled' : ''}" data-mid="${esc(m.id)}">
           <span class="chat-ava">${esc(nick.slice(0, 1))}</span>
-          <div class="chat-bubble">${body}<span class="chat-time">${fmtTs(m.ts)}</span></div>
+          <div class="chat-bubble">
+            ${quote}
+            ${body}
+            <span class="chat-time">${fmtTs(m.ts)}</span>
+            ${ops}
+            ${reactChips}
+          </div>
         </div>`;
     }).join('');
+  }
+
+  function chatQuoteBlock(q) {
+    if (!q) return '';
+    const users = loadUsers();
+    const nick = (q.sender && users[q.sender] && users[q.sender].nick) || q.nick || (q.sender || 'TA');
+    let preview = '';
+    if (q.kind === 'image') preview = '[图片]';
+    else if (q.kind === 'file') preview = '[文件]';
+    else if (q.kind === 'audio') preview = '[语音]';
+    else preview = esc((q.text || '').slice(0, 60));
+    return `<div class="chat-quote" data-mid="${esc(q.id || '')}">
+      <div class="cq-nick">${esc(nick)}</div>
+      <div class="cq-preview">${preview}</div>
+    </div>`;
+  }
+
+  function chatReactionChips(m, mine) {
+    const emojis = Object.keys(m.reactions || {});
+    if (!emojis.length) return '';
+    return `<div class="chat-reacts">${emojis.map((e) => {
+      const who = m.reactions[e] || [];
+      const count = who.length;
+      const mineReact = who.includes(me.u);
+      return `<span class="chat-react${mineReact ? ' mine' : ''}" data-react="${esc(e)}">${esc(e)}${count > 1 ? `<small>${count}</small>` : ''}</span>`;
+    }).join('')}</div>`;
+  }
+
+  /* ---- 撤回：我方消息 2 分钟内可撤回 ---- */
+  function canRecallMsg(m) {
+    return !!m && m.sender === me.u && !m.recalled && (Date.now() - m.ts) < 120000;
+  }
+
+  async function recallMsg(id) {
+    const list = loadMsgs(couple.code);
+    const m = list.find((x) => x.id === id);
+    if (!m || !canRecallMsg(m)) return;
+    m.recalled = true;
+    if (cloudOn()) {
+      try { await C.saveMsg(m, couple.code); syncState('云端已同步'); } catch { syncState('同步失败'); }
+    }
+    saveMsgs(couple.code, list);
+    updateChatList();
+  }
+
+  /* ---- 引用回复 ---- */
+  function quoteMsg(id) {
+    const list = loadMsgs(couple.code);
+    const m = list.find((x) => x.id === id);
+    if (!m) return;
+    replyDraft = {
+      id: m.id, kind: m.kind,
+      text: m.text || '', url: m.url || '',
+      sender: m.sender, nick: (loadUsers()[m.sender] || {}).nick || m.sender,
+    };
+    updateReplyBar();
+    $('chatInput') && $('chatInput').focus();
+  }
+
+  function clearReplyDraft() {
+    replyDraft = null;
+    updateReplyBar();
+  }
+
+  function updateReplyBar() {
+    const bar = $('chatReplyBar');
+    if (!bar) return;
+    if (!replyDraft) { bar.hidden = true; return; }
+    const u = loadUsers()[replyDraft.sender];
+    const nick = (u && u.nick) || replyDraft.sender;
+    let preview = '';
+    if (replyDraft.kind === 'image') preview = '[图片]';
+    else if (replyDraft.kind === 'file') preview = '[文件]';
+    else if (replyDraft.kind === 'audio') preview = '[语音]';
+    else preview = (replyDraft.text || '').slice(0, 40);
+    bar.hidden = false;
+    bar.innerHTML = `<span class="crb-label">↩ 回复 <b>${esc(nick)}</b></span><span class="crb-preview">${esc(preview)}</span><button type="button" class="crb-close" id="chatReplyClose" title="取消">×</button>`;
+    $('chatReplyClose') && $('chatReplyClose').addEventListener('click', clearReplyDraft);
+  }
+
+  /* ---- 表情回应 ---- */
+  async function toggleReaction(id, emoji) {
+    const list = loadMsgs(couple.code);
+    const m = list.find((x) => x.id === id);
+    if (!m || m.recalled) return;
+    m.reactions = m.reactions || {};
+    const arr = m.reactions[emoji] || [];
+    const idx = arr.indexOf(me.u);
+    if (idx >= 0) arr.splice(idx, 1); else arr.push(me.u);
+    if (!arr.length) delete m.reactions[emoji];
+    if (cloudOn()) {
+      try { await C.saveMsg(m, couple.code); syncState('云端已同步'); } catch { syncState('同步失败'); }
+    }
+    saveMsgs(couple.code, list);
+    updateChatList();
+  }
+
+  /* ---- 操作菜单：点操作按钮弹表情面板 ---- */
+  function closeReactionPicker() {
+    const p = document.querySelector('.chat-react-pop');
+    if (p) p.remove();
+  }
+  function openReactionPicker(id, anchorEl) {
+    closeReactionPicker();
+    const pop = document.createElement('div');
+    pop.className = 'chat-react-pop';
+    pop.innerHTML = CHAT_REACTIONS.map((e) => `<button type="button" class="crp-btn" data-emoji="${e}">${e}</button>`).join('');
+    document.body.appendChild(pop);
+    // 定位到气泡下方
+    const r = anchorEl.getBoundingClientRect();
+    pop.style.left = (r.left + window.scrollX) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    pop.addEventListener('click', (ev) => {
+      const b = ev.target.closest('.crp-btn');
+      if (b) { toggleReaction(id, b.dataset.emoji); closeReactionPicker(); }
+    });
+    setTimeout(() => {
+      const h = (e) => { if (!pop.contains(e.target) && !anchorEl.contains(e.target)) { closeReactionPicker(); document.removeEventListener('click', h); } };
+      document.addEventListener('click', h);
+    }, 0);
   }
 
   function renderChat(main) {
@@ -2459,11 +2675,12 @@
         ${!chatReady ? '<div class="waiting-bar">私信还没有在云端启用：请先在 Supabase 运行 说明.md 里的 lm_messages 建表 SQL。</div>' : ''}
         <div class="chat-list" id="chatList">${chatBubbles(list)}</div>
         <div class="rec-hint" id="recHint" hidden><i></i><span>正在录音</span><b id="recTime">0:00</b><em>再点一下结束 · 最长 60 秒</em></div>
+        <div class="chat-reply-bar" id="chatReplyBar" hidden></div>
         <form class="chat-bar" id="chatForm">
           <button type="button" class="chat-tool chat-mic" id="chatMic" title="语音留言：点一下开始，再点一下发送">◉</button>
           <label class="chat-tool" title="发送图片">▣<input type="file" id="chatImg" accept="image/*" hidden /></label>
           <label class="chat-tool" title="发送文件">▤<input type="file" id="chatFile" hidden /></label>
-          <input class="chat-input" id="chatInput" maxlength="500" placeholder="说点什么…" autocomplete="off" />
+          <input class="chat-input" id="chatInput" maxlength="500" placeholder="${replyDraft ? '回复 ' + esc(replyDraft.nick || 'TA') : '说点什么…'}" autocomplete="off" />
           <button type="submit" class="chat-send">发送</button>
         </form>
       </div>`;
@@ -2478,8 +2695,67 @@
     $('chatVideoCall').addEventListener('click', () => startCall(true));
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
+    // 气泡内操作：点击显示 ops，点具体按钮执行
+    listEl.addEventListener('click', (e) => {
+      const bubble = e.target.closest('.chat-bubble');
+      const row = e.target.closest('.chat-row');
+      if (!bubble || !row) { closeReactionPicker(); return; }
+      const mid = row.dataset.mid;
+      const list0 = loadMsgs(couple.code);
+      const m = list0.find((x) => x.id === mid);
+      if (!m) return;
+
+      // 点表情反应 chip → 反选/加上自己
+      const reactChip = e.target.closest('.chat-react');
+      if (reactChip) {
+        e.stopPropagation();
+        toggleReaction(mid, reactChip.dataset.react);
+        return;
+      }
+      // 点已有表情区域外层 → 弹 picker 加新表情
+      const reactsArea = e.target.closest('.chat-reacts');
+      if (reactsArea && !reactChip) {
+        e.stopPropagation();
+        openReactionPicker(mid, bubble);
+        return;
+      }
+
+      // 点操作按钮
+      const opBtn = e.target.closest('.chat-op');
+      if (opBtn) {
+        e.stopPropagation();
+        const op = opBtn.dataset.op;
+        if (op === 'recall') { if (confirm('撤回这条消息？')) recallMsg(mid); }
+        else if (op === 'quote') { quoteMsg(mid); }
+        else if (op === 'react') { openReactionPicker(mid, bubble); }
+        return;
+      }
+
+      // 点气泡（除文字/图片本身）→ 显示 ops 栏；再点一下隐藏
+      const ops = bubble.querySelector('.chat-ops');
+      if (!ops) return;
+      const hideOth = document.querySelectorAll('.chat-ops[hidden="false"]');
+      hideOth.forEach((o) => { if (o !== ops) o.hidden = true; });
+      ops.hidden = !ops.hidden;
+    });
+    // 点空白隐藏所有 ops 和 picker（全局只绑一次，见 bindChatDocClick）
+    updateReplyBar();
     markChatSeen();
     refreshUnread();
+    bindChatDocClick();
+  }
+
+  /* 全局只绑定一次：点击空白隐藏气泡操作/表情面板，避免 renderChat 多次调用时累积 */
+  let chatDocBound = false;
+  function bindChatDocClick() {
+    if (chatDocBound) return;
+    chatDocBound = true;
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('.chat-bubble')) {
+        document.querySelectorAll('.chat-ops').forEach((o) => o.hidden = true);
+        closeReactionPicker();
+      }
+    });
   }
 
   function updateChatList() {
@@ -2502,6 +2778,8 @@
   }
 
   async function storeMsg(m) {
+    // 把当前待引用消息挂上；send 完成后清空 replyDraft
+    if (replyDraft) { m.reply_to = replyDraft; }
     if (cloudOn()) {
       if (!chatReady) throw new Error('lm_messages: does not exist');
       await C.saveMsg(m, couple.code);
@@ -2510,6 +2788,7 @@
     list.push(m);
     saveMsgs(couple.code, list);
     updateChatList();
+    clearReplyDraft();
   }
 
   async function sendText() {
