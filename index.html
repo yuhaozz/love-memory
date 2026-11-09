@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="银河之约" />
-<link rel="stylesheet" href="style.css?v=20261109g" />
+<link rel="stylesheet" href="style.css?v=20261109h" />
 </head>
 <body>
 
@@ -446,6 +446,7 @@
       <button type="button" class="app-tab" data-tab="diary">日记</button>
       <button type="button" class="app-tab" data-tab="photos">照片</button>
       <button type="button" class="app-tab" data-tab="timeline">足迹</button>
+      <button type="button" class="app-tab" data-tab="home">主页</button>
       <button type="button" class="app-tab" data-tab="us">我们</button>
     </nav>
     <div class="app-user">
@@ -538,9 +539,32 @@
   </div>
 </div>
 
+<!-- TA的个人主页（只读） -->
+<div class="home-overlay" id="homeOverlay" hidden>
+  <button type="button" class="home-close" id="homeClose" aria-label="关闭">×</button>
+  <div class="home-body" id="homeBody"></div>
+</div>
+
+<!-- 编辑个人资料 -->
+<div class="pmodal" id="profileModal" hidden>
+  <div class="pm-card" role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+    <h3 id="pmTitle">编辑资料</h3>
+    <label class="pm-field">昵称
+      <input id="pmNick" maxlength="24" placeholder="怎么称呼你" />
+    </label>
+    <label class="pm-field">个性签名
+      <input id="pmMotto" maxlength="40" placeholder="写一句此刻的心情…" />
+    </label>
+    <div class="pm-actions">
+      <button type="button" class="btn-ghost" id="pmCancel">取消</button>
+      <button type="button" class="btn-primary" id="pmSave">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="script.js?v=20261107i"></script>
-<script src="app.js?v=20261109e"></script>
+<script src="app.js?v=20261109f"></script>
 </body>
 </html>
