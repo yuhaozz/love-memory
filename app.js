@@ -1125,6 +1125,10 @@
           <span>${esc(u.sign || '—')}</span>
           ${u.bday ? `<span>生日 ${esc(u.bday.slice(5).replace('-', '.'))}</span>` : ''}
         </div>
+        <div class="pc-actions">
+          ${isMe ? '<button type="button" class="pc-btn" data-act="edit">编辑资料</button>' : ''}
+          <button type="button" class="pc-btn" data-act="home">${isMe ? '我的主页' : '查看TA的主页'}</button>
+        </div>
       </div>`;
 
     const noteText = cloudOn()
@@ -1195,6 +1199,18 @@
       card.addEventListener('click', () => {
         const name = card.getAttribute('data-home');
         if (name === me.u) switchAppTab('home');
+        else openHomeOverlay(name);
+      });
+    });
+    main.querySelectorAll('.pc-btn').forEach((b) => {
+      b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const name = b.closest('.profile-card').getAttribute('data-home');
+        if (b.dataset.act === 'edit') {
+          $('pmNick').value = me.nick;
+          $('pmMotto').value = (me.deco && me.deco.motto) || '';
+          $('profileModal').hidden = false;
+        } else if (name === me.u) switchAppTab('home');
         else openHomeOverlay(name);
       });
     });
@@ -2408,7 +2424,15 @@
     if (cloudOn()) cloudInit();
     // PWA：注册 Service Worker，支持「添加到主屏幕」
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      const hadSW = !!navigator.serviceWorker.controller;
       navigator.serviceWorker.register('sw.js').catch(() => { /* 离线能力不可用时静默 */ });
+      // 新版本接管后自动刷新一次，避免旧缓存继续跑旧代码
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hadSW && !sessionStorage.getItem('ot_sw_reloaded')) {
+          sessionStorage.setItem('ot_sw_reloaded', '1');
+          location.reload();
+        }
+      });
     }
     const params = new URLSearchParams(location.search);
     if (params.get('demo') === '1' && !cloudOn()) {
