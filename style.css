@@ -2323,15 +2323,12 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 .chat-head, .chat-bar, .chat-reply-bar, .rec-hint { flex-shrink: 0; }
 .app-overlay:has(.chat-wrap) .chat-list { min-height: 0; }
 
-/* 手机上私信页：顶栏只留切换标签，标题压成一行，把高度让给聊天 */
+/* 手机上私信页：整个顶栏收起，只留一行「返回 + 私信」，把高度让给聊天 */
 @media (max-width: 900px) {
-  .app-overlay:has(.chat-wrap) .app-top { padding: 4px 10px; gap: 0; flex-wrap: nowrap; }
-  .app-overlay:has(.chat-wrap) .app-brand,
-  .app-overlay:has(.chat-wrap) .app-user { display: none; }
-  .app-overlay:has(.chat-wrap) .app-tabs { order: 0; width: 100%; margin-left: 0; }
-  .app-overlay:has(.chat-wrap) .app-tab { padding: 5px 9px; font-size: 10.5px; letter-spacing: .06em; }
-  .app-overlay:has(.chat-wrap) .app-main { padding: 6px 12px 0; }
+  .app-overlay:has(.chat-wrap) .app-top { display: none; }
+  .app-overlay:has(.chat-wrap) .app-main { padding: 8px 12px 0; }
   .app-overlay:has(.chat-wrap) .chat-head { margin-bottom: 6px; gap: 8px; }
+  .app-overlay:has(.chat-wrap) .chat-back { display: inline-flex; }
   .app-overlay:has(.chat-wrap) .chat-title { font-size: 15px; letter-spacing: .1em; }
   .app-overlay:has(.chat-wrap) .chat-sub { display: none; }
   .app-overlay:has(.chat-wrap) .chat-call { padding: 6px 12px; font-size: 11px; }
@@ -2345,6 +2342,25 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   gap: 14px;
   margin-bottom: 18px;
 }
+.chat-head-l { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* 返回：手机上才显示（私信页会把整个顶栏收起来） */
+.chat-back {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 0;
+  background: rgba(10, 16, 34, 0.6);
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  color: var(--white-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.chat-back:hover { color: var(--cyan); border-color: rgba(56, 189, 248, 0.4); }
 .chat-title { font-size: 18px; letter-spacing: 0.18em; }
 .chat-sub {
   display: block;
