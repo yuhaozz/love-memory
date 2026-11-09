@@ -20,6 +20,7 @@
     supabaseUrl: 'https://yvjlpyfuejgncsnswxae.supabase.co',
     supabaseKey: 'sb_publishable_kYs0WWcvoDJIX-Fozjk2vg_tzwea2hl',
   };
+  window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
 
   const $ = (id) => document.getElementById(id);
