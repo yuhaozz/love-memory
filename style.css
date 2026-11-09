@@ -1642,6 +1642,20 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .te-icon { font-size: 20px; color: var(--white-faint); }
 .today-empty p { font-size: 13px; letter-spacing: 0.1em; }
+.today-col > .entry-card { margin-bottom: 12px; }
+.today-more {
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--hairline);
+  border-radius: 12px;
+  color: var(--white-mute);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  padding: 12px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.today-more:hover { color: var(--white); border-color: rgba(56, 189, 248, 0.4); }
 
 /* ---- 记录卡片 ---- */
 .entry-card {
