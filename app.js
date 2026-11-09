@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109x';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109y';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2733,6 +2733,7 @@
     $('chatMic').addEventListener('click', toggleRecord);
     $('chatCall').addEventListener('click', () => startCall(false));
     $('chatVideoCall').addEventListener('click', () => startCall(true));
+    fitChatHeight();
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
     /* 手机键盘弹起后可视区域变矮，自动贴底，避免发出的话看不到 */
@@ -2804,6 +2805,17 @@
     });
   }
 
+  /* 让私信面板正好撑满可视高度，避免底部留出大片空白 */
+  function fitChatHeight() {
+    const wrap = document.querySelector('.chat-wrap');
+    if (!wrap) return;
+    const vv = window.visualViewport;
+    const vh = vv ? vv.height : window.innerHeight;
+    const offset = vv ? vv.offsetTop : 0;
+    const top = wrap.getBoundingClientRect().top - offset;
+    wrap.style.height = Math.max(320, Math.round(vh - top - 10)) + 'px';
+  }
+
   /* 私信滚动到底：发出消息、键盘弹起、窗口变矮时都要保证看到最新一条 */
   function chatScrollBottom() {
     const el = $('chatList');
@@ -2822,15 +2834,16 @@
     markChatSeen();
   }
 
-  /* 手机键盘弹出/收起会改变可视高度，变化后重新贴底 */
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => {
-      if (typeof curTab !== 'undefined' && curTab === 'chat') {
-        setTimeout(chatScrollBottom, 80);
-        setTimeout(chatScrollBottom, 260);
-      }
-    });
+  /* 手机键盘弹出/收起会改变可视高度，变化后重新贴合高度并贴底 */
+  function refitChat() {
+    if (typeof curTab === 'undefined' || curTab !== 'chat') return;
+    fitChatHeight();
+    setTimeout(chatScrollBottom, 80);
+    setTimeout(chatScrollBottom, 260);
   }
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', refitChat);
+  window.addEventListener('resize', refitChat);
+  window.addEventListener('orientationchange', () => setTimeout(refitChat, 260));
 
   function chatSendError(e) {
     if (isChatTableMissing(e)) {
