@@ -489,14 +489,17 @@
     },
     async uploadPhoto(dataUrl, name) {
       const blob = await (await fetch(dataUrl)).blob();
-      ck(await sb.storage.from('photos').upload(name, blob, { contentType: 'image/jpeg' }));
-      const { data } = sb.storage.from('photos').getPublicUrl(name);
+      const tok = store.read(LS.token, '') || 'local';
+      const path = `${tok}/${name}`;
+      ck(await sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' }));
+      const { data } = sb.storage.from('photos').getPublicUrl(path);
       return data.publicUrl;
     },
     async uploadChatFile(dataUrl, origName, contentType) {
       const blob = await (await fetch(dataUrl)).blob();
       const ext = String(origName || '').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6) || 'bin';
-      const path = `chat/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const tok = store.read(LS.token, '') || 'local';
+      const path = `${tok}/chat/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       ck(await sb.storage.from('photos').upload(path, blob, { contentType: contentType || 'application/octet-stream' }));
       const { data } = sb.storage.from('photos').getPublicUrl(path);
       return data.publicUrl;
