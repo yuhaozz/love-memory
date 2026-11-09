@@ -2307,16 +2307,19 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 .app-overlay:has(.chat-wrap) {
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
 }
 .app-overlay:has(.chat-wrap) .app-main {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   overflow: hidden;
   padding-bottom: 0;
 }
-.chat-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.chat-wrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .chat-head, .chat-bar, .chat-reply-bar, .rec-hint { flex-shrink: 0; }
 .app-overlay:has(.chat-wrap) .chat-list { min-height: 0; }
 .chat-head {
