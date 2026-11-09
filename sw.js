@@ -1,6 +1,6 @@
 /* 银河之约 · Service Worker
    只缓存同源静态资源；接口与云端数据一律直连网络。 */
-const VERSION = 'lm-20261109j';
+const VERSION = 'lm-20261109k';
 const CORE = [
   './',
   'index.html',
@@ -63,9 +63,26 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 静态资源：缓存优先（忽略 ?v= 版本参数），未命中再走网络并回填
+  // 静态资源：脚本/样式一律网络优先（带 ?v= 版本号更新后立刻生效，离线回退缓存）；
+  // 图片等走缓存优先，但按完整 URL 精确匹配，绝不跨版本错拿旧文件。
+  const isCode = /\.(?:js|css)$/i.test(url.pathname);
+  if (isCode) {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200 && res.type === 'basic') {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
   e.respondWith(
-    caches.match(req, { ignoreSearch: true }).then((hit) => {
+    caches.match(req).then((hit) => {
       if (hit) return hit;
       return fetch(req).then((res) => {
         if (res && res.status === 200 && res.type === 'basic') {
