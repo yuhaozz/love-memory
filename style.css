@@ -2113,6 +2113,7 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -2126,6 +2127,7 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   color: var(--white-faint);
 }
 .chat-call { flex-shrink: 0; }
+.chat-calls { display: flex; gap: 8px; flex-shrink: 0; }
 
 .chat-list {
   height: calc(100vh - 290px);
@@ -2278,6 +2280,8 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .call-overlay[hidden] { display: none; }
 .call-card {
+  position: relative;
+  overflow: hidden;
   width: min(88vw, 320px);
   padding: 34px 28px 26px;
   text-align: center;
@@ -2286,6 +2290,47 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   background: radial-gradient(ellipse at top, rgba(20, 32, 68, 0.6), rgba(5, 8, 18, 0.9));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
 }
+.call-card.video {
+  width: min(92vw, 430px);
+  height: min(76vh, 620px);
+  padding: 0;
+}
+.call-remote {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #05070f;
+  display: none;
+}
+.call-local {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 88px;
+  height: 116px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transform: scaleX(-1);
+  display: none;
+}
+.call-info { position: relative; z-index: 3; }
+.call-card.video .call-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 44px 24px 22px;
+  background: linear-gradient(to top, rgba(2, 4, 11, 0.94) 30%, rgba(2, 4, 11, 0.55) 70%, transparent);
+}
+.call-card.video .call-avatar { display: none; }
+.call-card.video .call-name { font-size: 16px; margin-bottom: 4px; }
+.call-card.video .call-actions { margin-top: 18px; }
 .call-avatar {
   width: 68px;
   height: 68px;
@@ -2338,4 +2383,6 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   .chat-bubble { max-width: 82%; }
   .chat-img img { max-width: 200px; max-height: 200px; }
   .chat-tool { width: 34px; height: 34px; }
+  .call-card.video { width: min(94vw, 430px); height: min(72vh, 560px); }
+  .call-local { width: 74px; height: 98px; }
 }
