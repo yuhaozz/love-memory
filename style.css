@@ -2888,3 +2888,81 @@ html[data-theme="warm"] .app-overlay {
 html[data-theme="warm"] .app-top { background: rgba(20, 13, 8, 0.86); }
 html[data-theme="warm"] .chat-bar { background: linear-gradient(to top, rgba(15, 10, 7, 0.96) 62%, rgba(15, 10, 7, 0)); }
 
+
+/* ============================================================
+   个人主页（头像 / 昵称 / 个性签名 / 背景板）
+   ============================================================ */
+.top-av { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; vertical-align: -5px; margin-right: 6px; display: inline-block; }
+.ec-avatar.av, .pc-avatar:has(img) { overflow: hidden; }
+.ec-avatar img, .pc-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.profile-card.clickable { cursor: pointer; transition: border-color 0.3s, transform 0.3s; }
+.profile-card.clickable:hover { border-color: rgba(212, 160, 23, 0.45); transform: translateY(-2px); }
+
+.hp { padding-bottom: 24px; }
+.hp-bg { position: relative; height: 220px; border-radius: 18px; overflow: hidden; border: 1px solid var(--hairline-soft); }
+.hp-bg-btn { position: absolute; right: 12px; bottom: 12px; padding: 7px 14px; border-radius: 100px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(3, 6, 15, 0.45); color: #e9eff8; font-size: 11px; letter-spacing: 0.14em; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.hp-bg-btn:hover { border-color: rgba(255, 255, 255, 0.5); }
+.hp-id { text-align: center; margin-top: -46px; position: relative; z-index: 1; }
+.hp-avatar { width: 92px; height: 92px; border-radius: 50%; margin: 0 auto; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #3b82f6, #818cf8); border: 3px solid rgba(233, 239, 248, 0.35); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45); }
+.hp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hp-avatar.editable { cursor: pointer; }
+.hp-letter { font-size: 36px; color: #fff; font-weight: 300; }
+.hp-nick { font-size: 22px; letter-spacing: 0.1em; margin-top: 12px; font-weight: 300; }
+.hp-motto { color: var(--white-dim); font-size: 13px; margin-top: 6px; }
+.hp-meta { color: var(--white-mute); font-size: 12px; letter-spacing: 0.12em; margin-top: 6px; }
+.hp-edit-btn { margin-top: 12px; font-size: 11px; padding: 6px 16px; }
+.hp-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 22px 0 6px; }
+.hp-stat { text-align: center; padding: 14px 6px; border: 1px solid var(--hairline-soft); border-radius: 12px; background: var(--glass); }
+.hp-stat b { display: block; font-size: 18px; font-weight: 400; color: var(--gold-soft); }
+.hp-stat span { font-size: 11px; color: var(--white-mute); letter-spacing: 0.1em; }
+.hp-panel { margin-top: 16px; padding: 16px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--glass); }
+.hp-panel-t { font-size: 12px; letter-spacing: 0.2em; color: var(--white-mute); margin-bottom: 12px; }
+.hp-sw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.hp-sw { position: relative; height: 58px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; overflow: hidden; padding: 0; }
+.hp-sw.on { border-color: var(--gold-soft); }
+.hp-sw span { position: absolute; left: 8px; bottom: 5px; font-size: 11px; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); letter-spacing: 0.1em; }
+.hp-deco-row { display: flex; gap: 10px; margin-top: 12px; }
+.hp-deco-row .btn-ghost { font-size: 11px; padding: 6px 14px; }
+.hp-hint { margin-top: 10px; font-size: 11px; color: var(--white-faint); }
+.hp-recent { margin-top: 22px; }
+.hp-recent-t { font-size: 12px; letter-spacing: 0.22em; color: var(--white-mute); margin-bottom: 10px; }
+.hp-re-item { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; border: 1px solid var(--hairline-soft); border-radius: 10px; margin-bottom: 8px; background: var(--glass); font-size: 13px; }
+.hp-re-date { font-family: var(--font-mono); font-size: 11px; color: var(--gold-soft); white-space: nowrap; }
+.hp-re-mood { font-size: 11px; color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 100px; padding: 1px 8px; white-space: nowrap; }
+.hp-re-text { color: var(--white-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.hp-re-ph { font-size: 11px; color: var(--white-mute); white-space: nowrap; }
+.hp-empty { color: var(--white-faint); font-size: 12px; padding: 8px 2px; }
+
+/* TA的主页浮层 */
+.home-overlay { position: fixed; inset: 0; z-index: 600; overflow-y: auto; background: var(--bg-1); }
+.home-close { position: fixed; top: 14px; right: 22px; z-index: 2; background: none; border: none; color: var(--white-dim); font-size: 30px; cursor: pointer; }
+.home-close:hover { color: var(--white); }
+.home-body { max-width: 760px; margin: 0 auto; padding: 40px 22px 80px; }
+
+/* 编辑资料浮层 */
+.pmodal { position: fixed; inset: 0; z-index: 950; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(1, 2, 7, 0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.pm-card { width: min(92vw, 380px); padding: 26px 26px 22px; border-radius: 16px; border: 1px solid var(--hairline); background: linear-gradient(160deg, rgba(14, 22, 46, 0.96), rgba(5, 8, 20, 0.98)); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
+.pm-card h3 { font-weight: 300; letter-spacing: 0.2em; font-size: 15px; margin-bottom: 18px; color: #e9eff8; }
+.pm-field { display: block; font-size: 11px; letter-spacing: 0.18em; color: #98a6bc; margin-bottom: 14px; }
+.pm-field input { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(126, 148, 184, 0.3); background: rgba(3, 6, 15, 0.5); color: #e9eff8; font-size: 14px; font-family: inherit; }
+.pm-field input:focus { outline: none; border-color: rgba(56, 189, 248, 0.5); }
+.pm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+
+@media (max-width: 700px) {
+  .hp-bg { height: 170px; }
+  .hp-cards { gap: 8px; }
+  .hp-stat { padding: 12px 4px; }
+  .hp-stat b { font-size: 15px; }
+  .home-body { padding: 26px 14px 60px; }
+}
+
+/* 背景板上的细微星点 */
+.hp-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><circle cx='18' cy='30' r='1.1' fill='rgba(255,255,255,0.5)'/><circle cx='70' cy='12' r='0.8' fill='rgba(255,255,255,0.35)'/><circle cx='110' cy='44' r='1.3' fill='rgba(255,255,255,0.45)'/><circle cx='46' cy='80' r='0.9' fill='rgba(255,255,255,0.3)'/><circle cx='96' cy='96' r='1.1' fill='rgba(255,255,255,0.4)'/><circle cx='30' cy='118' r='0.7' fill='rgba(255,255,255,0.3)'/><circle cx='126' cy='120' r='0.9' fill='rgba(255,255,255,0.35)'/></svg>");
+}
+.hp-bg-btn { z-index: 1; }
