@@ -32,6 +32,10 @@
     entries: (code) => 'ot_entries_' + code,
     msgs: (code) => 'ot_msgs_' + code,
     chatSeen: (code) => 'ot_chatseen_' + code,
+    caps: (code) => 'ot_caps_' + code,
+    daily: (code) => 'ot_daily_' + code,
+    bucket: (code) => 'ot_bucket_' + code,
+    shares: 'ot_shares',
   };
   const MOODS = ['晴朗', '微风', '多云', '小雨', '开心', '想念', '平静', '激动', '疲惫', '治愈'];
   const THEMES = ['deep', 'light', 'warm'];
@@ -390,6 +394,62 @@
     },
     async destroyCouple(c) {
       ck(await sb.from('lm_couples').delete().eq('code', c.code));
+    },
+    // ---- 约定：时间胶囊 / 每日一问 / 心愿清单 ----
+    async fetchCapsules(code) {
+      const r = ck(await sb.from('lm_capsules').select('*').eq('couple', code).order('ts', { ascending: false }).limit(200));
+      return r || [];
+    },
+    async saveCapsule(c) {
+      ck(await sb.from('lm_capsules').upsert(c, { onConflict: 'id' }));
+      return c.id;
+    },
+    async deleteCapsule(id) {
+      ck(await sb.from('lm_capsules').delete().eq('id', id));
+    },
+    async fetchDaily(code) {
+      const r = ck(await sb.from('lm_daily').select('*').eq('couple', code).order('day', { ascending: false }).limit(120));
+      return r || [];
+    },
+    async saveDaily(d) {
+      ck(await sb.from('lm_daily').upsert(d, { onConflict: 'couple,day,author' }));
+    },
+    async fetchBucket(code) {
+      const r = ck(await sb.from('lm_bucket').select('*').eq('couple', code).order('ts', { ascending: true }).limit(500));
+      return r || [];
+    },
+    async saveBucket(b) {
+      ck(await sb.from('lm_bucket').upsert(b, { onConflict: 'id' }));
+      return b.id;
+    },
+    async deleteBucket(id) {
+      ck(await sb.from('lm_bucket').delete().eq('id', id));
+    },
+    async insertBucketRows(rows) {
+      ck(await sb.from('lm_bucket').insert(rows));
+    },
+    // ---- 只读分享：服务端签发 8 位码；按码取回，无需登录 ----
+    async shareCreate(payload) {
+      const data = ck(await sb.rpc('lm_share_create', { p_payload: payload }));
+      return data;
+    },
+    async shareGet(code) {
+      const r = await sb.rpc('lm_share_get', { p_code: code });
+      if (r.error) return null;
+      return r.data || null;
+    },
+    // ---- 恢复码 / 密码重置 / 注销 ----
+    async setRecovery(u, code) {
+      const data = ck(await sb.rpc('lm_set_recovery', { p_user: u, p_code: code }));
+      return data;
+    },
+    async recoverReset(u, code, pass) {
+      const data = ck(await sb.rpc('lm_recover_reset', { p_user: u, p_code: code, p_pass: pass }));
+      return data;
+    },
+    async deleteAccount(u) {
+      const data = ck(await sb.rpc('lm_delete_account', { p_user: u }));
+      return data;
     },
     // ---- 空间：创建 / 加入 / 解除（身份由请求头令牌确定）----
     async createSpace(since) {
@@ -949,6 +1009,7 @@
       markChatSeen();
       pollChat();
     }
+    if (t === 'promise') refreshPromise(false);
   }
   function renderMain() {
     if (!couple) { renderPairScreen(); return; }
@@ -958,6 +1019,7 @@
     else if (curTab === 'diary') renderDiary(main);
     else if (curTab === 'photos') renderPhotos(main);
     else if (curTab === 'timeline') renderTimeline(main);
+    else if (curTab === 'promise') renderPromise(main);
     else if (curTab === 'home') renderHome(main, me.u, false);
     else renderUs(main);
     main.scrollTop = 0;
@@ -1105,6 +1167,402 @@
     }).join('')}</div>`;
   }
 
+  /* ---- 约定：每日一问 / 时间胶囊 / 心愿清单 ---- */
+  const DAILY_QS = [
+    '今天有没有哪一刻，你突然很想我？',
+    '今天最想和我分享的一件小事是什么？',
+    '如果今天可以重来一次，你想改哪一段？',
+    '今天你为我（或为我们）做的一件小事是什么？',
+    '今天有没有一句话，你憋着没说？',
+    '今天你最想被我怎么安慰？',
+    '用三个词形容今天，你会说什么？',
+    '今天有什么让你觉得「幸好有你」？',
+    '今天你偷偷笑了一下，是因为什么？',
+    '如果现在能立刻见到我，你想先做什么？',
+    '今天有什么小烦恼，说出来会轻一点？',
+    '今天你最喜欢自己的哪一点？',
+    '今天有没有想起我们第一次见面？',
+    '今天你最想吃我做的哪道菜？',
+    '如果给今天起一个标题，会是什么？',
+    '今天你想对我说的一句悄悄话是什么？',
+    '今天有什么让你觉得被爱着？',
+    '今天你想和我一起做的第一件事是什么？',
+    '今天你最想回到哪个瞬间？',
+    '今天有什么值得记下来的小确幸？',
+    '今天你有没有为我留了一点时间？',
+    '今天你想向我道歉或道谢吗？',
+    '今天你最想被我夸奖什么？',
+    '今天你希望明天有什么不一样？',
+    '今天有什么让你犹豫了很久？',
+    '今天你偷偷想了几次我？',
+    '今天你最想和我一起听的歌是哪首？',
+    '今天如果只能记住一件事，你选哪件？',
+    '今天你有没有觉得我们更像「我们」？',
+    '今天你想对未来的我们说什么？',
+  ];
+
+  const BUCKET_SMALL = [
+    '一起看一场日出', '一起看一场日落', '一起走完一条长长的路', '一起做一顿晚饭',
+    '一起逛一次菜市场', '一起包一次饺子', '一起烤一次蛋糕', '一起喝一杯奶茶',
+    '一起吃一次路边摊', '一起在深夜煮泡面', '一起看一部老电影', '一起追完一部剧',
+    '一起听一首歌循环到睡着', '一起在 KTV 唱到嗓子哑', '一起去一次游乐园', '一起坐一次摩天轮',
+    '一起坐一次过山车', '一起拍一张合照', '一起拍一组贴纸照', '一起拍一段 Vlog',
+    '一起养一盆植物', '一起养一只猫或狗', '一起给植物换一次盆', '一起打扫一次房间',
+    '一起换一次床单', '一起装一次家具', '一起搬一次家', '一起逛一次宜家',
+    '一起挑一盏台灯', '一起在阳台看星星', '一起认一次星座', '一起数一次流星',
+    '一起去一次海边', '一起在沙滩上写字', '一起捡一次贝壳', '一起踩一次浪',
+    '一起看一次海上的月亮', '一起去一次山里', '一起爬一次山', '一起在山顶吹一次风',
+    '一起露营一次', '一起看一次篝火', '一起数一次帐篷外的星星', '一起淋一次雨',
+    '一起撑一把伞走回家', '一起堆一个雪人', '一起打一次雪仗', '一起在冬天分享一条围巾',
+    '一起喝一次热红酒', '一起过一个圣诞节', '一起跨一次年', '一起许一个新年愿望',
+    '一起过一次生日', '一起准备一次惊喜', '一起写一封手写信', '一起寄一张明信片',
+    '一起做一本相册', '一起整理一次旧照片', '一起录一段给未来的话', '一起定一个只属于我们的暗号',
+    '一起给对方取一个昵称', '一起穿一次情侣装', '一起戴一次同款戒指', '一起剪一次头发',
+    '一起做一次指甲', '一起敷一次面膜', '一起泡一次脚', '一起早睡一次',
+    '一起晨跑一次', '一起做一次拉伸', '一起骑一次单车', '一起坐一次公交到终点',
+    '一起坐一次夜班火车', '一起赶一次末班地铁', '一起去一次图书馆', '一起看一次展览',
+    '一起听一次现场音乐', '一起去一次博物馆', '一起去一次动物园', '一起去一次水族馆',
+    '一起去一次植物园', '一起去一次古镇', '一起去一次外地旅行', '一起规划一次未来的旅行',
+    '一起存一笔「我们」的钱', '一起记一次账', '一起做一次月度复盘', '一起列一份年度清单',
+    '一起完成清单上的第一件事', '一起把一件小事坚持三十天', '一起吵一次架再和好', '一起说一次「对不起」',
+    '一起说一次「谢谢你」', '一起说一次「我爱你」', '一起在深夜聊一次天', '一起聊一次小时候',
+    '一起聊一次未来', '一起看一次凌晨的城市', '一起做一件从没做过的事', '一起把这份清单走完',
+  ];
+
+  const promiseState = { code: '', caps: [], daily: [], bucket: [], loaded: false, err: '', kind: 'small' };
+
+  function promiseEnsureCode() {
+    if (!couple) return false;
+    if (promiseState.code !== couple.code) {
+      promiseState.code = couple.code;
+      promiseState.caps = [];
+      promiseState.daily = [];
+      promiseState.bucket = [];
+      promiseState.loaded = false;
+      promiseState.err = '';
+    }
+    return true;
+  }
+  function promiseLocalSave() {
+    if (cloudOn() || !couple) return;
+    store.write(LS.caps(couple.code), promiseState.caps);
+    store.write(LS.daily(couple.code), promiseState.daily);
+    store.write(LS.bucket(couple.code), promiseState.bucket);
+  }
+  async function refreshPromise() {
+    if (!promiseEnsureCode()) return;
+    const code = couple.code;
+    if (cloudOn()) {
+      try {
+        const [caps, daily, bucket] = await Promise.all([
+          C.fetchCapsules(code), C.fetchDaily(code), C.fetchBucket(code),
+        ]);
+        if (!couple || couple.code !== code) return;
+        promiseState.caps = caps || [];
+        promiseState.daily = daily || [];
+        promiseState.bucket = bucket || [];
+        promiseState.err = '';
+      } catch (e) {
+        promiseState.err = String((e && e.message) || e || '');
+      }
+    } else {
+      promiseState.caps = store.read(LS.caps(code), []);
+      promiseState.daily = store.read(LS.daily(code), []);
+      promiseState.bucket = store.read(LS.bucket(code), []);
+      promiseState.err = '';
+    }
+    promiseState.loaded = true;
+    if (curTab === 'promise' && couple) renderPromise($('appMain'));
+  }
+  function promiseFail(e) {
+    const s = String((e && e.message) || e || '');
+    if (/lm_capsules|lm_daily|lm_bucket|relation|schema cache|could not find|does not exist/i.test(s)) {
+      alert('保存失败：云端还没有「约定」数据表。\n请在 Supabase SQL Editor 执行「说明.md · 约定」一节的 SQL 后再试。');
+      promiseState.err = s;
+      if (curTab === 'promise') renderPromise($('appMain'));
+    } else {
+      alert('保存失败：' + (s || '网络错误'));
+    }
+  }
+  function qidOf(day) {
+    const n = Math.floor(new Date(day + 'T00:00:00').getTime() / 86400000);
+    return ((n % DAILY_QS.length) + DAILY_QS.length) % DAILY_QS.length;
+  }
+  function fmtDay(s) { return String(s || '').replace(/-/g, '.'); }
+  function promiseNick(author) {
+    const u = userMap()[author];
+    return (u && u.nick) || author;
+  }
+
+  function renderPromise(main) {
+    promiseEnsureCode();
+    const p = partner();
+    const today = todayKey();
+    const qid = qidOf(today);
+    const q = DAILY_QS[qid];
+    const mine = promiseState.daily.find((d) => d.day === today && d.author === me.u) || null;
+    const ta = (p && promiseState.daily.find((d) => d.day === today && d.author === p.u)) || null;
+    const both = !!(mine && ta);
+
+    const ansBox = (u, a) => `
+      <div class="pr-ans">
+        <span class="pr-who">${esc(u ? u.nick : 'TA')}</span>
+        <p>${esc(a).replace(/\n/g, '<br>')}</p>
+      </div>`;
+
+    const taHtml = ta
+      ? (both ? ansBox(p, ta.answer) : '<div class="pr-ans locked"><span class="pr-who">TA</span><p>已经回答了 · 写下你的答案就能看到彼此</p></div>')
+      : `<div class="pr-ans locked"><span class="pr-who">TA</span><p>${mine ? '还在等 TA 回答…' : '还没有人回答今天的题'}</p></div>`;
+
+    const mineHtml = `
+      <div class="pr-my">
+        <span class="pr-who">我${mine ? ' · 已回答' : ''}</span>
+        <textarea id="prDailyInput" class="pr-input" rows="3" maxlength="300" placeholder="写下你的答案，只有你们两人能看到…">${mine ? esc(mine.answer) : ''}</textarea>
+        <div class="pr-row">
+          <span class="pr-count" id="prDailyCount">${mine ? '已保存 · 可以修改' : ''}</span>
+          <button type="button" class="btn-primary" id="prDailySave">${mine ? '更新回答' : '回答'}</button>
+        </div>
+      </div>`;
+
+    const histDays = [...new Set(promiseState.daily.filter((d) => d.day !== today).map((d) => d.day))]
+      .sort((a, b) => b.localeCompare(a)).slice(0, 7);
+    const histHtml = histDays.map((day) => {
+      const items = promiseState.daily.filter((d) => d.day === day);
+      const ma = items.find((x) => x.author === me.u);
+      const pa = p ? items.find((x) => x.author === p.u) : null;
+      if (!ma || !pa) return '';
+      return `<div class="pr-hist-item">
+        <div class="pr-hist-day">${fmtDay(day)} · ${esc(DAILY_QS[qidOf(day)])}</div>
+        ${ansBox(me, ma.answer)}${ansBox(p, pa.answer)}
+      </div>`;
+    }).join('');
+
+    const capsSorted = promiseState.caps.slice().sort((a, b) => {
+      const oa = a.unlock_at <= today, ob = b.unlock_at <= today;
+      if (oa !== ob) return oa ? 1 : -1;
+      if (!oa) return a.unlock_at.localeCompare(b.unlock_at);
+      return (b.ts || 0) - (a.ts || 0);
+    });
+    const capsHtml = capsSorted.map((c) => {
+      const open = c.unlock_at <= today;
+      const left = Math.max(0, Math.round(
+        (new Date(c.unlock_at + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000));
+      return `<article class="pr-cap${open ? ' open' : ' locked'}">
+        <div class="pr-cap-head">
+          <span class="pr-cap-t">${open ? '🔓' : '🔒'} ${esc(c.title || '无题的信')}</span>
+          <span class="pr-cap-meta">${fmtDay(c.unlock_at)} ${open ? '已解锁' : '解锁 · 还有 ' + left + ' 天'}</span>
+        </div>
+        <p class="pr-cap-body${open ? '' : ' locked'}">${
+          open ? esc(c.body).replace(/\n/g, '<br>')
+               : '内容会在解锁那天自动出现，现在连写信的人也看不到。'}</p>
+        <div class="pr-cap-foot">
+          <span>${esc(promiseNick(c.author))} 封存</span>
+          ${c.author === me.u ? `<button type="button" class="pr-link danger" data-act="cap-del" data-id="${esc(c.id)}">删除</button>` : ''}
+        </div>
+      </article>`;
+    }).join('');
+
+    const kind = promiseState.kind;
+    const list = promiseState.bucket.filter((b) => b.kind === kind);
+    const doneN = list.filter((b) => b.done).length;
+    const pct = list.length ? Math.round((doneN / list.length) * 100) : 0;
+    const listHtml = list.length
+      ? `<ul class="pr-list">${list.map((b) => `
+          <li class="pr-item${b.done ? ' done' : ''}">
+            <button type="button" class="pr-check" data-act="b-toggle" data-id="${esc(b.id)}" aria-label="切换完成">${b.done ? '✓' : ''}</button>
+            <span class="pr-item-t">${esc(b.title)}</span>
+            <span class="pr-item-by">${esc(promiseNick(b.author))}</span>
+            <button type="button" class="pr-x" data-act="b-del" data-id="${esc(b.id)}" aria-label="删除">×</button>
+          </li>`).join('')}</ul>`
+      : (kind === 'small'
+        ? `<div class="pr-empty"><p>还没有载入清单。一次放进 100 件可以一起做的小事。</p><button type="button" class="btn-primary" id="prSeedSmall">载入 100 件小事</button></div>`
+        : '<div class="pr-empty"><p>写下第一件想一起做的事。</p></div>');
+
+    const tomorrow = (() => {
+      const d = new Date(); d.setDate(d.getDate() + 1); return todayKey(d);
+    })();
+    const defaultUnlock = (() => {
+      const d = new Date(); d.setFullYear(d.getFullYear() + 1); return todayKey(d);
+    })();
+
+    main.innerHTML = `
+      <div class="pr-page">
+        <div class="pr-hero">
+          <h2>约定</h2>
+          <span>PROMISES · 一起要做的事</span>
+        </div>
+
+        <section class="pr-card">
+          <div class="pr-head"><span class="pr-k">DAILY QUESTION · 每日一问</span><span class="pr-day">${fmtDay(today)}</span></div>
+          <h3 class="pr-q">${esc(q)}</h3>
+          ${p ? '' : '<p class="pr-hint">TA 还没加入空间，先把答案留给自己。</p>'}
+          <div class="pr-cols">${mineHtml}${taHtml}</div>
+          ${histHtml ? `<div class="pr-hist"><div class="pr-hist-t">往前回看</div>${histHtml}</div>` : ''}
+        </section>
+
+        <section class="pr-card">
+          <div class="pr-head"><span class="pr-k">TIME CAPSULE · 时间胶囊</span><span class="pr-day">${promiseState.caps.length} 封</span></div>
+          <div class="pr-cap-list">${capsHtml || '<p class="pr-empty-line">写一封给未来的信，设一个解锁日，到那天一起打开。</p>'}</div>
+          <div class="pr-newcap" id="prNewCap" hidden>
+            <input id="prCapTitle" class="pr-input-one" maxlength="40" placeholder="标题，例如：给一年后的我们" />
+            <input id="prCapDate" type="date" class="pr-input-one" min="${tomorrow}" value="${defaultUnlock}" />
+            <textarea id="prCapBody" class="pr-input" rows="4" maxlength="800" placeholder="写下想对未来的你们说的话…"></textarea>
+            <div class="pr-row"><button type="button" class="btn-ghost" id="prCapCancel">取消</button><button type="button" class="btn-primary" id="prCapSave">封 存</button></div>
+          </div>
+          <button type="button" class="pr-add" id="prCapToggle">＋ 写一封时间胶囊</button>
+        </section>
+
+        <section class="pr-card">
+          <div class="pr-head"><span class="pr-k">BUCKET LIST · 心愿清单</span><span class="pr-day">${doneN} / ${list.length}</span></div>
+          <div class="pr-kind">
+            <button type="button" class="pr-kind-b${kind === 'small' ? ' on' : ''}" data-kind="small">100 件小事</button>
+            <button type="button" class="pr-kind-b${kind === 'wish' ? ' on' : ''}" data-kind="wish">愿望清单</button>
+          </div>
+          <div class="pr-prog"><i style="width:${pct}%"></i></div>
+          ${listHtml}
+          <div class="pr-addrow">
+            <input id="prWishInput" class="pr-input-one" maxlength="40" placeholder="${kind === 'small' ? '再加一件小事…' : '写下一个愿望…'}" />
+            <button type="button" class="btn-primary" id="prWishAdd">添加</button>
+          </div>
+        </section>
+
+        ${promiseState.err ? '<div class="pr-warn">「约定」数据表还没准备好：请在 Supabase SQL Editor 执行「说明.md · 约定」一节的 SQL，然后刷新页面。</div>' : ''}
+      </div>`;
+
+    // ---- 每日一问 ----
+    const di = $('prDailyInput');
+    if (di) {
+      di.addEventListener('input', () => {
+        const c = $('prDailyCount');
+        if (c) c.textContent = `${di.value.length} / 300`;
+      });
+      $('prDailySave').addEventListener('click', async () => {
+        const a = di.value.trim();
+        if (!a) { di.focus(); return; }
+        const row = {
+          couple: couple.code, couple_token: store.read(LS.token, ''),
+          day: today, qid, author: me.u, answer: a, ts: Date.now(),
+        };
+        const btn = $('prDailySave');
+        btn.disabled = true;
+        try {
+          if (cloudOn()) { await C.saveDaily(row); syncState('云端已同步'); }
+          const i = promiseState.daily.findIndex((d) => d.day === today && d.author === me.u);
+          if (i >= 0) promiseState.daily[i] = row; else promiseState.daily.push(row);
+          promiseLocalSave();
+          renderPromise($('appMain'));
+        } catch (e) { promiseFail(e); }
+        finally { btn.disabled = false; }
+      });
+    }
+
+    // ---- 时间胶囊 ----
+    const newCap = $('prNewCap');
+    $('prCapToggle').addEventListener('click', () => { newCap.hidden = !newCap.hidden; });
+    $('prCapCancel').addEventListener('click', () => { newCap.hidden = true; });
+    $('prCapSave').addEventListener('click', async () => {
+      const title = $('prCapTitle').value.trim();
+      const body = $('prCapBody').value.trim();
+      const unlock = $('prCapDate').value;
+      if (!body) { $('prCapBody').focus(); return; }
+      if (!unlock || unlock < tomorrow) { alert('解锁日需要是明天或以后。'); return; }
+      const row = {
+        id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        couple: couple.code, couple_token: store.read(LS.token, ''),
+        author: me.u, title, body, unlock_at: unlock, ts: Date.now(),
+      };
+      const btn = $('prCapSave');
+      btn.disabled = true;
+      try {
+        if (cloudOn()) { await C.saveCapsule(row); syncState('云端已同步'); }
+        promiseState.caps.push(row);
+        promiseLocalSave();
+        renderPromise($('appMain'));
+      } catch (e) { promiseFail(e); }
+      finally { btn.disabled = false; }
+    });
+    main.querySelectorAll('[data-act="cap-del"]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        if (!confirm('删除这封时间胶囊？')) return;
+        try {
+          if (cloudOn()) await C.deleteCapsule(b.dataset.id);
+          promiseState.caps = promiseState.caps.filter((x) => x.id !== b.dataset.id);
+          promiseLocalSave();
+          renderPromise($('appMain'));
+        } catch (e) { promiseFail(e); }
+      });
+    });
+
+    // ---- 心愿清单 ----
+    main.querySelectorAll('.pr-kind-b').forEach((b) => {
+      b.addEventListener('click', () => {
+        promiseState.kind = b.dataset.kind;
+        renderPromise($('appMain'));
+      });
+    });
+    const seed = $('prSeedSmall');
+    if (seed) seed.addEventListener('click', async () => {
+      seed.disabled = true;
+      const now = Date.now();
+      const rows = BUCKET_SMALL.map((title, i) => ({
+        id: 'k' + now.toString(36) + i,
+        couple: couple.code, couple_token: store.read(LS.token, ''),
+        kind: 'small', title, done: false, done_at: null,
+        author: me.u, ts: now + i,
+      }));
+      try {
+        if (cloudOn()) { await C.insertBucketRows(rows); syncState('云端已同步'); }
+        promiseState.bucket = promiseState.bucket.concat(rows);
+        promiseLocalSave();
+        renderPromise($('appMain'));
+      } catch (e) { promiseFail(e); }
+      finally { seed.disabled = false; }
+    });
+    const wishInput = $('prWishInput');
+    const addWish = async () => {
+      const t = wishInput.value.trim();
+      if (!t) { wishInput.focus(); return; }
+      const row = {
+        id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        couple: couple.code, couple_token: store.read(LS.token, ''),
+        kind: promiseState.kind, title: t, done: false, done_at: null,
+        author: me.u, ts: Date.now(),
+      };
+      try {
+        if (cloudOn()) { await C.saveBucket(row); syncState('云端已同步'); }
+        promiseState.bucket.push(row);
+        promiseLocalSave();
+        renderPromise($('appMain'));
+      } catch (e) { promiseFail(e); }
+    };
+    $('prWishAdd').addEventListener('click', addWish);
+    wishInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addWish(); } });
+    main.querySelectorAll('[data-act="b-toggle"]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const row = promiseState.bucket.find((x) => x.id === b.dataset.id);
+        if (!row) return;
+        const patch = { done: !row.done, done_at: row.done ? null : Date.now() };
+        try {
+          if (cloudOn()) { await C.saveBucket(Object.assign({}, row, patch)); syncState('云端已同步'); }
+          Object.assign(row, patch);
+          promiseLocalSave();
+          renderPromise($('appMain'));
+        } catch (e) { promiseFail(e); }
+      });
+    });
+    main.querySelectorAll('[data-act="b-del"]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        if (!confirm('删除这一条？')) return;
+        try {
+          if (cloudOn()) await C.deleteBucket(b.dataset.id);
+          promiseState.bucket = promiseState.bucket.filter((x) => x.id !== b.dataset.id);
+          promiseLocalSave();
+          renderPromise($('appMain'));
+        } catch (e) { promiseFail(e); }
+      });
+    });
+  }
+
   /* ---- 我们：资料 / 数据 ---- */
   function renderUs(main) {
     const users = userMap();
@@ -1166,6 +1624,22 @@
         <div class="us-row"><span class="us-k">说明</span><span class="us-v us-hint">三种皮肤首页与空间同步切换：深空是默认星空，极简白适合白天，胶片暖像一封旧信。</span></div>
       </div>
 
+      <div class="us-panel">
+        <div class="us-row">
+          <span class="us-k">只读分享</span>
+          <span class="us-v"><button type="button" class="us-link" id="usShare">生成分享链接</button></span>
+        </div>
+        <div class="us-row">
+          <span class="us-k">恢复码</span>
+          <span class="us-v"><button type="button" class="us-link" id="usRecovery">设置恢复码</button></span>
+        </div>
+        <div class="us-row">
+          <span class="us-k">账号</span>
+          <span class="us-v"><button type="button" class="us-link danger" id="usDelete">注销账号</button></span>
+        </div>
+        <div class="us-row"><span class="us-k">说明</span><span class="us-v us-hint">分享链接是只读快照，不含私信；恢复码用于忘记密码时重置；注销会删除你的数据且不可恢复。</span></div>
+      </div>
+
       <div class="us-actions">
         <button type="button" class="btn-ghost" id="usYearbook">生成回忆年鉴</button>
         <button type="button" class="btn-ghost" id="usIcs">导出纪念日日历</button>
@@ -1217,6 +1691,9 @@
 
     $('usYearbook').addEventListener('click', () => showYearbook(true));
     $('usGuide').addEventListener('click', () => showOnboard(true));
+    $('usShare').addEventListener('click', createShare);
+    $('usRecovery').addEventListener('click', openRecoveryModal);
+    $('usDelete').addEventListener('click', deleteAccountFlow);
     $('usIcs').addEventListener('click', () => {
       const blob = new Blob([makeICS()], { type: 'text/calendar;charset=utf-8' });
       download(blob, `我们的纪念日-${couple.code}.ics`);
@@ -1266,6 +1743,125 @@
       renderTop();
       renderPairScreen();
     });
+  }
+
+  /* ---- 只读分享快照 ---- */
+  function buildSharePayload() {
+    const p = partner();
+    const list = entries().slice().sort((a, b) => b.ts - a.ts);
+    const photoCount = list.reduce((n, e) => n + (e.photos || []).length, 0);
+    const days = new Set(list.map((e) => e.date)).size;
+    const since = couple.since ? new Date(couple.since + 'T00:00:00') : null;
+    const together = since && !isNaN(since)
+      ? Math.max(1, Math.floor((Date.now() - since.getTime()) / 86400000) + 1) : 0;
+    const moods = {};
+    list.forEach((e) => { if (e.mood) moods[e.mood] = (moods[e.mood] || 0) + 1; });
+    const topMood = Object.keys(moods).sort((a, b) => moods[b] - moods[a])[0] || '';
+    return {
+      v: 1,
+      names: [me.nick, p ? p.nick : ''],
+      since: couple.since || '',
+      days: together,
+      stats: { entries: list.length, photos: photoCount, days },
+      mood: topMood,
+      recent: list.slice(0, 6).map((e) => ({
+        date: e.date,
+        mood: e.mood || '',
+        title: e.title || '',
+        text: (e.text || '').slice(0, 90),
+        photos: (e.photos || []).filter((u2) => safeUrl(u2)).slice(0, 2),
+      })),
+      created: Date.now(),
+    };
+  }
+
+  async function createShare() {
+    const payload = buildSharePayload();
+    if (!payload.stats.entries) { alert('还没有记录可以分享，先写一篇日记吧。'); return; }
+    const btn = $('usShare');
+    btn.disabled = true;
+    btn.textContent = '生成中…';
+    try {
+      let code;
+      if (cloudOn()) {
+        code = await C.shareCreate(payload);
+        if (!code || typeof code !== 'string') throw new Error('云端没有返回分享码');
+      } else {
+        const all = store.read(LS.shares, {});
+        code = 'L' + Date.now().toString(36).toUpperCase().slice(-5);
+        all[code] = payload;
+        const keys = Object.keys(all);
+        if (keys.length > 30) keys.sort().slice(0, keys.length - 30).forEach((k) => { delete all[k]; });
+        store.write(LS.shares, all);
+      }
+      $('shareUrl').value = location.href.split('?')[0] + '?share=' + code;
+      $('shareModal').hidden = false;
+    } catch (e) {
+      const s = String((e && e.message) || e || '');
+      if (/lm_share_create|schema cache|could not find|function/i.test(s)) {
+        alert('生成失败：云端还没有分享快照功能。\n请在 Supabase SQL Editor 执行「说明.md · 约定」一节的 SQL 后再试。');
+      } else {
+        alert('生成失败：' + (s || '网络错误'));
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '生成分享链接';
+    }
+  }
+
+  /* ---- 恢复码 / 注销 ---- */
+  function genRecoveryCode() {
+    const cs = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s = '';
+    for (let i = 0; i < 10; i++) s += cs[Math.floor(Math.random() * cs.length)];
+    return s.slice(0, 5) + '-' + s.slice(5);
+  }
+  function normCode(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+  function openRecoveryModal() {
+    $('rcCode').textContent = genRecoveryCode();
+    $('rcHint').textContent = '';
+    $('recoveryModal').hidden = false;
+  }
+
+  async function deleteAccountFlow() {
+    if (!confirm('注销账号会删除你的日记、私信、时间胶囊与清单，且无法恢复。确定继续吗？')) return;
+    const typed = prompt('请输入你的用户名「' + me.u + '」以确认注销：');
+    if (!typed || typed.trim().toLowerCase() !== me.u) { alert('用户名不匹配，已取消。'); return; }
+    try {
+      if (cloudOn()) {
+        const r = await C.deleteAccount(me.u);
+        if (r && r.error) throw new Error(r.error);
+        localStorage.removeItem(LS.session);
+        setToken('');
+      } else {
+        const users = loadUsers();
+        const couples = loadCouples();
+        const code = me.couple;
+        if (code && couples[code]) {
+          couples[code].members = couples[code].members.filter((m) => m !== me.u);
+          if (!couples[code].members.length) delete couples[code];
+          saveCouples(couples);
+          saveEntries(code, loadEntries(code).filter((e) => e.author !== me.u));
+          saveMsgs(code, loadMsgs(code).filter((m) => m.sender !== me.u));
+          store.write(LS.caps(code), store.read(LS.caps(code), []).filter((c) => c.author !== me.u));
+          store.write(LS.daily(code), store.read(LS.daily(code), []).filter((d) => d.author !== me.u));
+          store.write(LS.bucket(code), store.read(LS.bucket(code), []).filter((b) => b.author !== me.u));
+        }
+        delete users[me.u];
+        saveUsers(users);
+        localStorage.removeItem(LS.session);
+      }
+      alert('账号已注销，再见。');
+      location.reload();
+    } catch (e) {
+      const s = String((e && e.message) || e || '');
+      if (/lm_delete_account|schema cache|could not find|function/i.test(s)) {
+        alert('注销失败：云端还没有注销功能。\n请在 Supabase SQL Editor 执行「说明.md · 约定」一节的 SQL 后再试。');
+      } else {
+        alert('注销失败：' + (s || '网络错误'));
+      }
+    }
   }
 
   /* ---------------- 个人主页（头像 / 昵称 / 个性签名 / 背景板） ---------------- */
@@ -1437,6 +2033,173 @@
       renderMain();
     } catch (e2) { profileFailHint(e2); }
   });
+
+  /* ---- 恢复码弹层 ---- */
+  $('rcCancel').addEventListener('click', () => { $('recoveryModal').hidden = true; });
+  $('rcCopy').addEventListener('click', async () => {
+    const code = $('rcCode').textContent.trim();
+    try { await navigator.clipboard.writeText(code); $('rcCopy').textContent = '已复制'; }
+    catch { $('rcHint').textContent = '浏览器不允许自动复制，请手动抄下来。'; }
+  });
+  $('rcSave').addEventListener('click', async () => {
+    const code = $('rcCode').textContent.trim();
+    const btn = $('rcSave');
+    btn.disabled = true;
+    try {
+      if (cloudOn()) {
+        const r = await C.setRecovery(me.u, code);
+        if (r && r.error) throw new Error(r.error);
+      } else {
+        const users = loadUsers();
+        users[me.u].rh = hash(normCode(code));
+        saveUsers(users);
+        me = users[me.u];
+      }
+      $('recoveryModal').hidden = true;
+      alert('恢复码已保存，请抄在安全的地方：\n' + code);
+    } catch (e) {
+      const s = String((e && e.message) || e || '');
+      if (/lm_set_recovery|recovery_hash|schema cache|could not find|function/i.test(s)) {
+        alert('保存失败：云端还没有恢复码功能。\n请在 Supabase SQL Editor 执行「说明.md · 约定」一节的 SQL 后再试。');
+      } else {
+        alert('保存失败：' + (s || '网络错误'));
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ---- 分享链接弹层 ---- */
+  $('shareClose').addEventListener('click', () => { $('shareModal').hidden = true; });
+  $('shareCopy').addEventListener('click', async () => {
+    const inp = $('shareUrl');
+    inp.select();
+    try {
+      await navigator.clipboard.writeText(inp.value);
+    } catch {
+      try { document.execCommand('copy'); } catch { /* 忽略 */ }
+    }
+    $('shareCopy').textContent = '已复制';
+  });
+
+  /* ---- 登录页：忘记密码 / 恢复码重置 ---- */
+  $('forgotBtn').addEventListener('click', () => {
+    $('rvErr').textContent = '';
+    $('rvUser').value = $('loginUser').value.trim();
+    $('rvCode').value = '';
+    $('rvPass').value = '';
+    $('recoverModal').hidden = false;
+  });
+  $('rvCancel').addEventListener('click', () => { $('recoverModal').hidden = true; });
+  $('rvGo').addEventListener('click', async () => {
+    const u = $('rvUser').value.trim();
+    const code = $('rvCode').value.trim();
+    const pass = $('rvPass').value;
+    const err = $('rvErr');
+    err.textContent = '';
+    if (!u || !code) { err.textContent = '请填写用户名和恢复码'; return; }
+    if (pass.length < 4) { err.textContent = '新密码至少 4 位'; return; }
+    const btn = $('rvGo');
+    btn.disabled = true;
+    try {
+      if (cloudOn()) {
+        const r = await C.recoverReset(u, code, pass);
+        if (r && r.error === 'bad_code') { err.textContent = '恢复码不正确'; return; }
+        if (r && r.error === 'weak') { err.textContent = '新密码太短'; return; }
+        if (r && r.error) { err.textContent = '重置失败：' + r.error; return; }
+      } else {
+        const users = loadUsers();
+        const target = users[u] || users[u.toLowerCase()];
+        if (!target || !target.rh || target.rh !== hash(normCode(code))) {
+          err.textContent = '恢复码不正确'; return;
+        }
+        target.pw = hash(pass);
+        saveUsers(users);
+      }
+      $('recoverModal').hidden = true;
+      closeAuth();
+      $('loginUser').value = u;
+      $('loginPass').value = pass;
+      alert('密码已重置，直接点「登录」即可进入。');
+    } catch (e) {
+      const s = String((e && e.message) || e || '');
+      if (/lm_recover_reset|recovery_hash|schema cache|could not find|function/i.test(s)) {
+        err.textContent = '云端还没有恢复码功能，请先执行说明.md 里的 SQL';
+      } else {
+        err.textContent = '重置失败：' + (s || '网络错误');
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ---- 只读分享页（?share=CODE，无需登录） ---- */
+  async function openSharePage(code) {
+    const page = $('sharePage');
+    if (!page) return;
+    page.hidden = false;
+    document.body.classList.add('share-mode');
+    $('shareBody').innerHTML = '<div class="sh-loading">正在打开这份回忆…</div>';
+    let payload = null;
+    if (cloudOn()) {
+      try { payload = await C.shareGet(code); } catch { payload = null; }
+    }
+    if (!payload) {
+      const all = store.read(LS.shares, {});
+      payload = all[code] || all[String(code).toUpperCase()] || null;
+    }
+    if (!payload || !payload.names) {
+      $('shareBody').innerHTML = `
+        <div class="sh-card">
+          <div class="sh-miss">
+            <p>这份分享已失效或不存在。</p>
+            <p class="sh-miss-sub">可能是链接不完整，或这份快照已经被清理。</p>
+            <button type="button" class="btn-primary" id="shBack">回到首页</button>
+          </div>
+        </div>`;
+      bindShareBack();
+      return;
+    }
+    const names = (payload.names || []).filter(Boolean).map((x) => esc(x)).join(' & ') || '我们';
+    const st = payload.stats || {};
+    const rec = Array.isArray(payload.recent) ? payload.recent : [];
+    $('shareBody').innerHTML = `
+      <div class="sh-card">
+        <div class="sh-top"><span>GALACTIC PROMISE</span><span>READ ONLY</span></div>
+        <div class="sh-title">银河之约</div>
+        <div class="sh-names">${names}</div>
+        <div class="sh-days">${payload.days ? '在一起第 ' + Number(payload.days) + ' 天' : '我们的时间线'}</div>
+        <div class="sh-stats">
+          <div><b>${Number(st.entries) || 0}</b><span>篇记录</span></div>
+          <div><b>${Number(st.photos) || 0}</b><span>张照片</span></div>
+          <div><b>${Number(st.days) || 0}</b><span>天有记录</span></div>
+        </div>
+        ${payload.mood ? `<div class="sh-mood">最常的心情 · ${esc(payload.mood)}</div>` : ''}
+        <div class="sh-list">
+          <div class="sh-list-t">最近的日子</div>
+          ${rec.map((r) => {
+            const ph = (r.photos || []).map((x) => safeUrl(x)).filter(Boolean).slice(0, 2);
+            return `<div class="sh-item">
+              <div class="sh-item-head"><span>${esc(fmtDay(r.date))}</span>${r.mood ? `<span class="sh-item-mood">${esc(r.mood)}</span>` : ''}</div>
+              ${r.title ? `<div class="sh-item-title">${esc(r.title)}</div>` : ''}
+              ${r.text ? `<p class="sh-item-text">${esc(r.text)}</p>` : ''}
+              ${ph.length ? `<div class="sh-photos">${ph.map((x) => `<img src="${x}" alt="" loading="lazy" />`).join('')}</div>` : ''}
+            </div>`;
+          }).join('') || '<p class="sh-miss-sub">还没有可展示的记录。</p>'}
+        </div>
+        <div class="sh-foot">
+          <span>${payload.created ? '分享于 ' + fmtDay(todayKey(new Date(payload.created))) : '只读快照'}</span>
+          <span>只读 · 不含私信</span>
+        </div>
+        <button type="button" class="btn-primary sh-back" id="shBack">回到银河之约</button>
+      </div>`;
+    bindShareBack();
+  }
+  function bindShareBack() {
+    const b = $('shBack');
+    if (!b) return;
+    b.addEventListener('click', () => { location.href = location.href.split('?')[0]; });
+  }
 
   /* ---- 回忆年鉴：1080 × 1350 的图片，可保存分享 ---- */
   function yearbookData() {
@@ -2435,6 +3198,8 @@
       });
     }
     const params = new URLSearchParams(location.search);
+    const shareCode = params.get('share');
+    if (shareCode) { openSharePage(shareCode); return; }
     if (params.get('demo') === '1' && !cloudOn()) {
       seedDemo();
       const tab = params.get('tab');
