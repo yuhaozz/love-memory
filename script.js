@@ -1157,10 +1157,11 @@ function initFeedback() {
     status.textContent = 'SENDING…';
 
     try {
-      if (typeof CLOUD === 'undefined' || !CLOUD.enabled || !window.supabase) {
+      const cfg = window.CLOUD;
+      if (!cfg || !cfg.enabled || !window.supabase) {
         throw new Error('cloud unavailable');
       }
-      const sb = window.supabase.createClient(CLOUD.supabaseUrl, CLOUD.supabaseKey);
+      const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
       const { error } = await sb.from('lm_feedback').insert({
         name: name || '匿名访客',
         text: text,
