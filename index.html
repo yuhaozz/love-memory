@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="银河之约" />
-<link rel="stylesheet" href="style.css?v=20261109j" />
+<link rel="stylesheet" href="style.css?v=20261109m" />
 </head>
 <body>
 
@@ -376,6 +376,7 @@
         <input id="loginPass" type="password" autocomplete="current-password" required maxlength="40" />
       </label>
       <button class="auth-submit" type="submit">登 录</button>
+      <button type="button" class="auth-forgot" id="forgotBtn">忘记密码？用恢复码重置</button>
       <div class="auth-err" id="loginErr"></div>
     </form>
 
@@ -446,6 +447,7 @@
       <button type="button" class="app-tab" data-tab="diary">日记</button>
       <button type="button" class="app-tab" data-tab="photos">照片</button>
       <button type="button" class="app-tab" data-tab="timeline">足迹</button>
+      <button type="button" class="app-tab" data-tab="promise">约定</button>
       <button type="button" class="app-tab" data-tab="home">主页</button>
       <button type="button" class="app-tab" data-tab="us">我们</button>
     </nav>
@@ -562,9 +564,64 @@
   </div>
 </div>
 
+<!-- 设置恢复码 -->
+<div class="pmodal" id="recoveryModal" hidden>
+  <div class="pm-card" role="dialog" aria-modal="true">
+    <h3>设置恢复码</h3>
+    <p class="pm-tip">忘记密码时，用这串恢复码重置。它只显示这一次，请抄下来或截图保存。</p>
+    <div class="rc-code" id="rcCode">—</div>
+    <p class="rc-hint" id="rcHint"></p>
+    <div class="pm-actions">
+      <button type="button" class="btn-ghost" id="rcCopy">复制</button>
+      <button type="button" class="btn-ghost" id="rcCancel">取消</button>
+      <button type="button" class="btn-primary" id="rcSave">我已记下</button>
+    </div>
+  </div>
+</div>
+
+<!-- 用恢复码重置密码 -->
+<div class="pmodal" id="recoverModal" hidden>
+  <div class="pm-card" role="dialog" aria-modal="true">
+    <h3>重置密码</h3>
+    <p class="pm-tip">输入用户名、恢复码和新密码。恢复码可在空间「我们」页生成。</p>
+    <label class="pm-field">用户名
+      <input id="rvUser" maxlength="20" autocomplete="username" />
+    </label>
+    <label class="pm-field">恢复码
+      <input id="rvCode" maxlength="20" placeholder="例如 ABCDE-12345" />
+    </label>
+    <label class="pm-field">新密码
+      <input id="rvPass" type="password" maxlength="40" autocomplete="new-password" />
+    </label>
+    <div class="auth-err" id="rvErr"></div>
+    <div class="pm-actions">
+      <button type="button" class="btn-ghost" id="rvCancel">取消</button>
+      <button type="button" class="btn-primary" id="rvGo">重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 分享链接 -->
+<div class="pmodal" id="shareModal" hidden>
+  <div class="pm-card" role="dialog" aria-modal="true">
+    <h3>只读分享链接</h3>
+    <p class="pm-tip">拿到链接的人可以看到你们的统计与最近记录，只能看，不能改，也看不到私信。</p>
+    <input class="pm-share-input" id="shareUrl" readonly />
+    <div class="pm-actions">
+      <button type="button" class="btn-ghost" id="shareCopy">复制链接</button>
+      <button type="button" class="btn-primary" id="shareClose">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- 只读分享页 -->
+<div class="share-page" id="sharePage" hidden>
+  <div class="share-inner" id="shareBody"></div>
+</div>
+
 <!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="script.js?v=20261107i"></script>
-<script src="app.js?v=20261109g"></script>
+<script src="app.js?v=20261109m"></script>
 </body>
 </html>
