@@ -455,6 +455,8 @@
   let muted = false;
   let seenSignals = new Set();
   let chatBusy = false;
+  let callIsVideo = false;
+  let remoteStream = null;
 
   const authModal = $('authModal');
   const appEl = $('app');
@@ -1102,7 +1104,10 @@
       <div class="chat-wrap">
         <div class="chat-head">
           <div class="chat-title">私信<span class="chat-sub">${p ? '仅你们两人可见 · ' + esc(p.nick) : '等TA加入后就能私信和通话'}</span></div>
-          <button type="button" class="btn-primary chat-call" id="chatCall"${p && cloudOn() ? '' : ' disabled'}>☎ 语音通话</button>
+          <div class="chat-calls">
+            <button type="button" class="btn-primary chat-call" id="chatCall"${p && cloudOn() ? '' : ' disabled'}>☎ 语音</button>
+            <button type="button" class="btn-primary chat-call" id="chatVideoCall"${p && cloudOn() ? '' : ' disabled'}>▷ 视频</button>
+          </div>
         </div>
         ${!chatReady ? '<div class="waiting-bar">私信还没有在云端启用：请先在 Supabase 运行 说明.md 里的 lm_messages 建表 SQL。</div>' : ''}
         <div class="chat-list" id="chatList">${chatBubbles(list)}</div>
@@ -1119,7 +1124,8 @@
     $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); sendText(); });
     $('chatImg').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendImage(f); });
     $('chatFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendFile(f); });
-    $('chatCall').addEventListener('click', startCall);
+    $('chatCall').addEventListener('click', () => startCall(false));
+    $('chatVideoCall').addEventListener('click', () => startCall(true));
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
     markChatSeen();
@@ -1220,7 +1226,11 @@
   function setCallState(s) {
     callState = s;
     const p = partner();
+    const videoUi = callIsVideo && s !== 'idle';
     callOverlay.hidden = s === 'idle';
+    $('callCard').classList.toggle('video', videoUi);
+    $('callRemote').style.display = (videoUi && remoteStream) ? 'block' : 'none';
+    $('callLocal').style.display = (videoUi && localStream && localStream.getVideoTracks().length > 0) ? 'block' : 'none';
     $('callAccept').hidden = s !== 'ringing';
     $('callMute').hidden = s !== 'active';
     $('callHang').hidden = s === 'idle';
@@ -1228,8 +1238,39 @@
     $('callAvatar').textContent = p ? p.nick.slice(0, 1) : '?';
     $('callTimerText').hidden = s !== 'active';
     $('callMute').textContent = muted ? '取消静音' : '静音';
-    const label = { calling: '正在呼叫…', ringing: '来电', connecting: '接通中…', active: '通话中' }[s];
+    const label = {
+      calling: callIsVideo ? '正在视频呼叫…' : '正在呼叫…',
+      ringing: callIsVideo ? '视频来电' : '来电',
+      connecting: '接通中…',
+      active: callIsVideo ? '视频通话中' : '通话中',
+    }[s];
     if (label) $('callStatus').textContent = label;
+  }
+
+  function attachRemote(stream) {
+    if (!stream) return;
+    remoteStream = stream;
+    if (stream.getVideoTracks().length > 0) {
+      const v = $('callRemote');
+      v.srcObject = stream;
+      v.style.display = 'block';
+      v.play().catch(() => { /* 需要用户点一下页面才有画面 */ });
+      $('callAudio').srcObject = null;
+    } else {
+      const a = $('callAudio');
+      a.srcObject = stream;
+      a.play().catch(() => { /* 需要用户点一下页面才有声音 */ });
+    }
+  }
+
+  function attachLocal(stream) {
+    if (!stream) return;
+    if (stream.getVideoTracks().length > 0) {
+      const v = $('callLocal');
+      v.srcObject = stream;
+      v.style.display = 'block';
+      v.play().catch(() => { /* 本地预览失败忽略 */ });
+    }
   }
 
   function callClock() {
@@ -1263,6 +1304,15 @@
     const a = $('callAudio');
     a.srcObject = null;
     try { a.pause(); } catch { /* 忽略 */ }
+    const rv = $('callRemote');
+    rv.srcObject = null;
+    rv.style.display = 'none';
+    const lv = $('callLocal');
+    lv.srcObject = null;
+    lv.style.display = 'none';
+    $('callCard').classList.remove('video');
+    remoteStream = null;
+    callIsVideo = false;
     pendingIce = [];
     incomingOffer = null;
     muted = false;
@@ -1283,11 +1333,7 @@
   function setupPc() {
     pc = new RTCPeerConnection(ICE);
     localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
-    pc.ontrack = (e) => {
-      const a = $('callAudio');
-      a.srcObject = e.streams[0];
-      a.play().catch(() => { /* 需要用户点一下页面才有声音 */ });
-    };
+    pc.ontrack = (e) => { attachRemote(e.streams[0]); };
     pc.onicecandidate = (e) => {
       if (e.candidate) sendSignal({ t: 'ice', c: e.candidate.toJSON() });
     };
@@ -1315,24 +1361,31 @@
     }, 20000);
   }
 
-  async function startCall() {
-    if (!cloudOn()) return alert('语音通话需要双方都在云端同步模式。');
-    if (!chatReady) return alert('语音通话还没有在云端启用：请先运行 lm_messages 建表 SQL。');
+  async function startCall(video) {
+    if (!cloudOn()) return alert('通话需要双方都在云端同步模式。');
+    if (!chatReady) return alert('通话还没有在云端启用：请先运行 lm_messages 建表 SQL。');
     if (!partner()) return alert('等TA加入这个空间后，就可以通话了。');
     if (callState !== 'idle') return;
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
+    const constraints = video
+      ? {
         audio: { echoCancellation: true, noiseSuppression: true },
-        video: false,
-      });
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      }
+      : { audio: { echoCancellation: true, noiseSuppression: true }, video: false };
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch {
-      return alert('无法使用麦克风：请允许浏览器的麦克风权限后重试。');
+      return alert(video
+        ? '无法使用摄像头或麦克风：请允许摄像头和麦克风权限后重试。'
+        : '无法使用麦克风：请允许浏览器的麦克风权限后重试。');
     }
+    callIsVideo = !!video;
+    attachLocal(localStream);
     setupPc();
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await sendSignal({ t: 'offer', sdp: pc.localDescription.toJSON() });
+      await sendSignal({ t: 'offer', sdp: pc.localDescription.toJSON(), video: !!video });
       setCallState('calling');
       callTimeoutId = setTimeout(() => {
         if (callState === 'calling') { sendSignal({ t: 'hangup' }); endCall(); alert('对方没有接听。'); }
@@ -1346,7 +1399,8 @@
 
   function onOffer(d) {
     if (callState !== 'idle') { sendSignal({ t: 'busy' }); return; }
-    incomingOffer = d.sdp;
+    incomingOffer = { sdp: d.sdp, video: !!d.video };
+    callIsVideo = !!d.video;
     setCallState('ringing');
     callTimeoutId = setTimeout(() => {
       if (callState === 'ringing') { sendSignal({ t: 'hangup' }); endCall(); }
@@ -1355,21 +1409,27 @@
 
   async function acceptCall() {
     if (callState !== 'ringing' || !incomingOffer) return;
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
+    const video = !!incomingOffer.video;
+    const constraints = video
+      ? {
         audio: { echoCancellation: true, noiseSuppression: true },
-        video: false,
-      });
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      }
+      : { audio: { echoCancellation: true, noiseSuppression: true }, video: false };
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch {
-      alert('无法使用麦克风：请允许麦克风权限。');
+      alert(video ? '无法使用摄像头或麦克风：请允许权限。' : '无法使用麦克风：请允许麦克风权限。');
       sendSignal({ t: 'hangup' });
       endCall();
       return;
     }
+    callIsVideo = video;
+    attachLocal(localStream);
     if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
     setupPc();
     try {
-      await pc.setRemoteDescription(incomingOffer);
+      await pc.setRemoteDescription(incomingOffer.sdp);
       for (const c of pendingIce) { try { await pc.addIceCandidate(c); } catch { /* 跳过 */ } }
       pendingIce = [];
       const answer = await pc.createAnswer();
