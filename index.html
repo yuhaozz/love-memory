@@ -4,7 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>银河之约</title>
-<link rel="stylesheet" href="style.css?v=20261109e" />
+<meta name="description" content="银河之约 · 情侣私密空间：日记、照片、私语、通话与纪念日，只属于你们两个人。" />
+<meta name="theme-color" content="#010207" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="192x192" href="pwa-192.png" />
+<link rel="apple-touch-icon" href="pwa-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="银河之约" />
+<link rel="stylesheet" href="style.css?v=20261109g" />
 </head>
 <body>
 
@@ -500,9 +508,39 @@
   <button type="button" class="viewer-close" id="viewerClose" aria-label="关闭">×</button>
 </div>
 
+<!-- 首次进入的三步引导 -->
+<div class="onboard" id="onboard" hidden>
+  <div class="onboard-card" role="dialog" aria-modal="true" aria-labelledby="obTitle">
+    <div class="ob-glow" aria-hidden="true"></div>
+    <div class="ob-step" id="obStep">STEP 01 / 03</div>
+    <h3 class="ob-title" id="obTitle">记录</h3>
+    <p class="ob-text" id="obText"></p>
+    <div class="ob-dots" id="obDots" aria-hidden="true"></div>
+    <div class="ob-actions">
+      <button type="button" class="btn-ghost" id="obSkip">跳过</button>
+      <button type="button" class="btn-primary" id="obNext">下一步 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 回忆年鉴 -->
+<div class="yearbook" id="yearbook" hidden>
+  <div class="yb-box" role="dialog" aria-modal="true">
+    <button type="button" class="yb-close" id="ybClose" aria-label="关闭">×</button>
+    <div class="yb-stage">
+      <img id="ybImg" alt="回忆年鉴" />
+    </div>
+    <div class="yb-actions">
+      <a class="btn-primary" id="ybDownload" download="yearbook.png">保存图片</a>
+      <button type="button" class="btn-ghost" id="ybAgain">重新生成</button>
+    </div>
+    <p class="yb-note">图片为 1080 × 1350，适合发朋友圈或存进相册。</p>
+  </div>
+</div>
+
 <!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="script.js?v=20261107i"></script>
-<script src="app.js?v=20261109c"></script>
+<script src="app.js?v=20261109e"></script>
 </body>
 </html>
