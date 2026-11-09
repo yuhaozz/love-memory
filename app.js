@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109ad';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109ae';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2707,7 +2707,10 @@
     main.innerHTML = `
       <div class="chat-wrap">
         <div class="chat-head">
-          <div class="chat-title">私信<span class="chat-sub">${p ? '仅你们两人可见 · ' + esc(p.nick) : '等TA加入后就能私信和通话'}</span></div>
+          <div class="chat-head-l">
+            <button type="button" class="chat-back" id="chatBack" aria-label="返回">←</button>
+            <div class="chat-title">私信<span class="chat-sub">${p ? '仅你们两人可见 · ' + esc(p.nick) : '等TA加入后就能私信和通话'}</span></div>
+          </div>
           <div class="chat-calls">
             <button type="button" class="btn-primary chat-call" id="chatCall"${p && cloudOn() ? '' : ' disabled'}>☎ 语音</button>
             <button type="button" class="btn-primary chat-call" id="chatVideoCall"${p && cloudOn() ? '' : ' disabled'}>▷ 视频</button>
@@ -2734,6 +2737,7 @@
     $('chatMic').addEventListener('click', toggleRecord);
     $('chatCall').addEventListener('click', () => startCall(false));
     $('chatVideoCall').addEventListener('click', () => startCall(true));
+    $('chatBack').addEventListener('click', () => switchAppTab('today'));
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
     /* 手机键盘弹起后可视区域变矮，自动贴底，避免发出的话看不到 */
