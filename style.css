@@ -2648,6 +2648,29 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 .call-card.video .call-avatar { display: none; }
 .call-card.video .call-name { font-size: 16px; margin-bottom: 4px; }
 .call-card.video .call-actions { margin-top: 18px; }
+/* 点击画面切换大小窗 */
+.call-card.video .call-remote,
+.call-card.video .call-local { cursor: pointer; }
+.call-card.video.swapped .call-remote {
+  inset: auto;
+  top: 14px;
+  right: 14px;
+  width: 88px;
+  height: 116px;
+  border-radius: 10px;
+  z-index: 2;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.call-card.video.swapped .call-local {
+  top: 0;
+  left: 0;
+  right: auto;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  z-index: 0;
+  box-shadow: none;
+}
 .call-avatar {
   width: 68px;
   height: 68px;
@@ -3166,7 +3189,7 @@ html[data-theme="warm"] .chat-bar { background: linear-gradient(to top, rgba(15,
   opacity: 0.55;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><circle cx='18' cy='30' r='1.1' fill='rgba(255,255,255,0.5)'/><circle cx='70' cy='12' r='0.8' fill='rgba(255,255,255,0.35)'/><circle cx='110' cy='44' r='1.3' fill='rgba(255,255,255,0.45)'/><circle cx='46' cy='80' r='0.9' fill='rgba(255,255,255,0.3)'/><circle cx='96' cy='96' r='1.1' fill='rgba(255,255,255,0.4)'/><circle cx='30' cy='118' r='0.7' fill='rgba(255,255,255,0.3)'/><circle cx='126' cy='120' r='0.9' fill='rgba(255,255,255,0.35)'/></svg>");
 }
-.hp-bg-btn { z-index: 1; }
+.hp-bg-btn { z-index: 3; }
 
 /* 我们页资料卡上的操作按钮 */
 .pc-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }

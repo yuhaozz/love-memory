@@ -2983,6 +2983,20 @@
     if (label) $('callStatus').textContent = label;
   }
 
+  /* 移动端自动播放策略兜底：先静音保证出画面，等用户点一下再恢复声音 */
+  let remoteNeedsGesture = false;
+  function resumeRemoteSound() {
+    if (!remoteNeedsGesture) return;
+    const v = $('callRemote');
+    if (!v || !v.srcObject) return;
+    remoteNeedsGesture = false;
+    v.muted = false;
+    v.play().catch(() => { });
+    if (callState === 'active') $('callStatus').textContent = callIsVideo ? '视频通话中' : '通话中';
+  }
+  document.addEventListener('click', resumeRemoteSound, true);
+  document.addEventListener('touchstart', resumeRemoteSound, { capture: true, passive: true });
+
   function attachRemote(stream) {
     if (!stream) return;
     remoteStream = stream;
@@ -2990,7 +3004,16 @@
       const v = $('callRemote');
       v.srcObject = stream;
       v.style.display = 'block';
-      v.play().catch(() => { /* 需要用户点一下页面才有画面 */ });
+      const p = v.play();
+      if (p && p.then) {
+        p.catch(() => {
+          /* 被自动播放策略拦下：静音重试，画面先出来 */
+          v.muted = true;
+          remoteNeedsGesture = true;
+          v.play().catch(() => { });
+          $('callStatus').textContent = '点一下画面恢复声音';
+        });
+      }
       $('callAudio').srcObject = null;
     } else {
       const a = $('callAudio');
@@ -3047,6 +3070,9 @@
     lv.srcObject = null;
     lv.style.display = 'none';
     $('callCard').classList.remove('video');
+    $('callCard').classList.remove('swapped');
+    $('callRemote').muted = false;
+    remoteNeedsGesture = false;
     remoteStream = null;
     callIsVideo = false;
     pendingIce = [];
@@ -3233,6 +3259,15 @@
     if (localStream) localStream.getAudioTracks().forEach((t) => { t.enabled = !muted; });
     $('callMute').textContent = muted ? '取消静音' : '静音';
   });
+
+  /* 点击视频画面切换大窗 / 小窗 */
+  function toggleCallView(e) {
+    if (!callIsVideo || callState === 'idle') return;
+    if (e) e.stopPropagation();
+    $('callCard').classList.toggle('swapped');
+  }
+  $('callRemote').addEventListener('click', toggleCallView);
+  $('callLocal').addEventListener('click', toggleCallView);
   window.addEventListener('beforeunload', () => {
     if (callState !== 'idle') sendSignal({ t: 'hangup' });
   });
