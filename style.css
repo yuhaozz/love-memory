@@ -2326,9 +2326,11 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 
 .chat-list {
   height: calc(100vh - 290px);
+  height: calc(100dvh - 290px);   /* 手机键盘弹出时跟着可视区收缩 */
   min-height: 300px;
   overflow-y: auto;
   padding: 6px 4px 18px;
+  scroll-padding-bottom: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -2779,7 +2781,7 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 .call-btn.hang { color: #f0a3a3; border-color: rgba(220, 100, 100, 0.45); background: rgba(200, 70, 70, 0.12); }
 
 @media (max-width: 640px) {
-  .chat-list { height: calc(100vh - 320px); min-height: 240px; }
+  .chat-list { height: calc(100vh - 320px); height: calc(100dvh - 320px); min-height: 220px; }
   .chat-head { align-items: flex-start; }
   .chat-call { padding: 7px 12px; font-size: 11px; }
   .chat-bubble { max-width: 82%; }

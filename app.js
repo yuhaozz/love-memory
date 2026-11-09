@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109w';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109x';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2735,6 +2735,12 @@
     $('chatVideoCall').addEventListener('click', () => startCall(true));
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
+    /* 手机键盘弹起后可视区域变矮，自动贴底，避免发出的话看不到 */
+    const ci = $('chatInput');
+    if (ci) {
+      ci.addEventListener('focus', () => { setTimeout(chatScrollBottom, 60); setTimeout(chatScrollBottom, 300); });
+    }
+    setTimeout(chatScrollBottom, 120);
     // 气泡内操作：点击显示 ops，点具体按钮执行
     listEl.addEventListener('click', (e) => {
       const bubble = e.target.closest('.chat-bubble');
@@ -2798,14 +2804,32 @@
     });
   }
 
+  /* 私信滚动到底：发出消息、键盘弹起、窗口变矮时都要保证看到最新一条 */
+  function chatScrollBottom() {
+    const el = $('chatList');
+    if (el) el.scrollTop = el.scrollHeight;
+    const main = $('appMain');
+    if (main && main.scrollHeight > main.clientHeight + 4) main.scrollTop = main.scrollHeight;
+  }
+
   function updateChatList() {
     if (!couple) return;
     const el = $('chatList');
     if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
     el.innerHTML = chatBubbles(loadMsgs(couple.code));
-    if (nearBottom) el.scrollTop = el.scrollHeight;
+    if (nearBottom) chatScrollBottom();
     markChatSeen();
+  }
+
+  /* 手机键盘弹出/收起会改变可视高度，变化后重新贴底 */
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      if (typeof curTab !== 'undefined' && curTab === 'chat') {
+        setTimeout(chatScrollBottom, 80);
+        setTimeout(chatScrollBottom, 260);
+      }
+    });
   }
 
   function chatSendError(e) {
@@ -2828,6 +2852,8 @@
     list.push(m);
     saveMsgs(couple.code, list);
     updateChatList();
+    chatScrollBottom();
+    setTimeout(chatScrollBottom, 80);
     clearReplyDraft();
   }
 
