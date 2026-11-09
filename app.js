@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109z';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109aa';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -1068,6 +1068,7 @@
     else if (curTab === 'home') renderHome(main, me.u, false);
     else renderUs(main);
     main.scrollTop = 0;
+    syncChatViewport();
   }
 
   function userMap() { return loadUsers(); }
@@ -2733,7 +2734,6 @@
     $('chatMic').addEventListener('click', toggleRecord);
     $('chatCall').addEventListener('click', () => startCall(false));
     $('chatVideoCall').addEventListener('click', () => startCall(true));
-    fitChatHeight();
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
     /* 手机键盘弹起后可视区域变矮，自动贴底，避免发出的话看不到 */
@@ -2805,15 +2805,19 @@
     });
   }
 
-  /* 让私信面板正好撑满可视高度，避免底部留出大片空白 */
-  function fitChatHeight() {
-    const wrap = document.querySelector('.chat-wrap');
-    if (!wrap) return;
+  /* 私信页把应用外壳钉在可视区上：高度=可视高度，用 flex 让输入栏始终贴底。
+     键盘弹出时可视高度变小，外壳跟着变矮，因此不会留下空白。 */
+  function syncChatViewport() {
+    const app = $('app');
+    if (!app) return;
+    if (!app.querySelector('.chat-wrap')) {
+      app.style.height = '';
+      app.style.top = '';
+      return;
+    }
     const vv = window.visualViewport;
-    const vh = vv ? vv.height : window.innerHeight;
-    const offset = vv ? vv.offsetTop : 0;
-    const top = wrap.getBoundingClientRect().top - offset;
-    wrap.style.height = Math.max(320, Math.round(vh - top - 2)) + 'px';
+    app.style.height = Math.round(vv ? vv.height : window.innerHeight) + 'px';
+    app.style.top = Math.round(vv ? vv.offsetTop : 0) + 'px';
   }
 
   /* 私信滚动到底：发出消息、键盘弹起、窗口变矮时都要保证看到最新一条 */
@@ -2835,13 +2839,17 @@
   }
 
   /* 手机键盘弹出/收起会改变可视高度，变化后重新贴合高度并贴底 */
+  let refitTimer = 0;
   function refitChat() {
     if (typeof curTab === 'undefined' || curTab !== 'chat') return;
-    fitChatHeight();
-    setTimeout(chatScrollBottom, 80);
-    setTimeout(chatScrollBottom, 260);
+    syncChatViewport();
+    clearTimeout(refitTimer);
+    refitTimer = setTimeout(() => { syncChatViewport(); chatScrollBottom(); }, 120);
   }
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', refitChat);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', refitChat);
+    window.visualViewport.addEventListener('scroll', refitChat);
+  }
   window.addEventListener('resize', refitChat);
   window.addEventListener('orientationchange', () => setTimeout(refitChat, 260));
 
