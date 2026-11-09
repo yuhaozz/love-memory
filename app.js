@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109t';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109u';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -895,7 +895,7 @@
     document.body.classList.remove('app-open');
     stopPolling();
     stopChatPolling();
-    if (callState !== 'idle') endCall();
+    if (callState !== 'idle') endCall(null, true);
     if (rec.recorder && rec.recorder.state !== 'inactive') stopRecord(true);
   }
   $('btnWrite').addEventListener('click', () => { openEditor(null); });
@@ -3052,7 +3052,32 @@
     callStartAt = 0;
   }
 
-  function endCall() {
+  function fmtCallDur(sec) {
+    if (sec < 60) return sec + ' 秒';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m < 60) return s ? (m + ' 分 ' + s + ' 秒') : (m + ' 分钟');
+    return Math.floor(m / 60) + ' 小时' + ((m % 60) ? (' ' + (m % 60) + ' 分') : '');
+  }
+  let callSummaryTimer = null;
+  function showCallSummary(text, icon) {
+    let el = $('callSummary');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'callSummary';
+      el.className = 'call-summary';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = '<span class="cs-icon">' + (icon || '📞') + '</span><span class="cs-txt">' + esc(text) + '</span>';
+    el.classList.add('show');
+    if (callSummaryTimer) clearTimeout(callSummaryTimer);
+    callSummaryTimer = setTimeout(() => el.classList.remove('show'), 4200);
+  }
+
+  function endCall(reason, silent) {
+    const wasVideo = callIsVideo;
+    const durSec = callStartAt ? Math.max(0, Math.floor((Date.now() - callStartAt) / 1000)) : 0;
+    const prevState = callState;
     if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
     stopCallClock();
     if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
@@ -3083,6 +3108,32 @@
     muted = false;
     callState = 'idle';
     callOverlay.hidden = true;
+
+    /* 结束提示：接通过的显示时长，没接通的分情况说明 */
+    if (!silent) {
+      let msg;
+      let icon = '📞';
+      if (reason) {
+        msg = reason;
+        icon = '📵';
+      } else if (durSec > 0) {
+        msg = (wasVideo ? '视频通话结束' : '通话结束') + ' · 时长 ' + fmtCallDur(durSec);
+        icon = wasVideo ? '🎬' : '📞';
+      } else if (prevState === 'calling') {
+        msg = '已取消呼叫';
+        icon = '📵';
+      } else if (prevState === 'ringing') {
+        msg = '已拒绝来电';
+        icon = '📵';
+      } else if (prevState === 'connecting') {
+        msg = '未能接通，请稍后再试';
+        icon = '📵';
+      } else {
+        msg = '通话已结束';
+        icon = '📵';
+      }
+      showCallSummary(msg, icon);
+    }
   }
 
   async function sendSignal(obj) {
@@ -3110,7 +3161,7 @@
         startCallClock();
       } else if (pc.connectionState === 'failed') {
         $('callStatus').textContent = '连接失败（网络受限）';
-        setTimeout(() => { sendSignal({ t: 'hangup' }); endCall(); }, 1500);
+        setTimeout(() => { sendSignal({ t: 'hangup' }); endCall('通话连接中断'); }, 1500);
       }
     };
   }
@@ -3121,7 +3172,7 @@
       if (callState === 'connecting') {
         $('callStatus').textContent = '连接失败（网络受限）';
         sendSignal({ t: 'hangup' });
-        setTimeout(endCall, 1500);
+        setTimeout(() => endCall('连接失败（网络受限）'), 1500);
       }
     }, 20000);
   }
@@ -3153,12 +3204,11 @@
       await sendSignal({ t: 'offer', sdp: pc.localDescription.toJSON(), video: !!video });
       setCallState('calling');
       callTimeoutId = setTimeout(() => {
-        if (callState === 'calling') { sendSignal({ t: 'hangup' }); endCall(); alert('对方没有接听。'); }
+        if (callState === 'calling') { sendSignal({ t: 'hangup' }); endCall('对方未接听'); }
       }, 45000);
     } catch {
       sendSignal({ t: 'hangup' });
-      endCall();
-      alert('呼叫失败，请重试。');
+      endCall('呼叫失败，请检查麦克风/摄像头权限');
     }
   }
 
@@ -3168,7 +3218,7 @@
     callIsVideo = !!d.video;
     setCallState('ringing');
     callTimeoutId = setTimeout(() => {
-      if (callState === 'ringing') { sendSignal({ t: 'hangup' }); endCall(); }
+      if (callState === 'ringing') { sendSignal({ t: 'hangup' }); endCall('来电超时未接听'); }
     }, 35000);
   }
 
@@ -3243,10 +3293,16 @@
       if (d.t === 'offer') onOffer(d);
       else if (d.t === 'answer') onAnswer(d);
       else if (d.t === 'ice') onIce(d);
-      else if (d.t === 'hangup') { if (callState !== 'idle') endCall(); }
+      else if (d.t === 'hangup') {
+        if (callState !== 'idle') {
+          if (callState === 'calling') endCall('对方已取消呼叫');
+          else if (callState === 'ringing') endCall('对方已挂断');
+          else endCall();
+        }
+      }
       else if (d.t === 'busy' && callState === 'calling') {
         $('callStatus').textContent = '对方正在通话中';
-        setTimeout(endCall, 1500);
+        setTimeout(() => endCall('对方正在通话中'), 1500);
       }
     }
   }

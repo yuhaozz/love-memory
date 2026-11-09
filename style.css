@@ -2671,6 +2671,35 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   z-index: 0;
   box-shadow: none;
 }
+
+/* 通话结束提示（时长 / 未接通原因） */
+.call-summary {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translate(-50%, 16px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(92vw, 380px);
+  padding: 12px 18px;
+  border-radius: 100px;
+  background: rgba(12, 20, 34, 0.92);
+  border: 1px solid rgba(120, 190, 255, 0.28);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  color: #e8f2ff;
+  font-size: 13.5px;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity .28s ease, transform .28s ease;
+}
+.call-summary.show { opacity: 1; transform: translate(-50%, 0); }
+.call-summary .cs-icon { font-size: 17px; line-height: 1; flex: 0 0 auto; }
+.call-summary .cs-txt { flex: 1 1 auto; }
 .call-avatar {
   width: 68px;
   height: 68px;
