@@ -1052,24 +1052,25 @@
       </article>`;
   }
 
-  /* ---- 今日：两个人今天的记录并排 ---- */
+  /* ---- 今日：两个人今天的记录并排（一天可写多篇） ---- */
   function renderToday(main) {
     const users = userMap();
     const p = partner();
     const today = todayKey();
     const list = entries().filter((e) => e.date === today);
-    const mineE = list.filter((e) => e.author === me.u).sort((a, b) => b.ts - a.ts)[0];
-    const partnerE = p ? list.filter((e) => e.author === p.u).sort((a, b) => b.ts - a.ts)[0] : null;
+    const mineList = list.filter((e) => e.author === me.u).sort((a, b) => a.ts - b.ts);
+    const partnerList = p ? list.filter((e) => e.author === p.u).sort((a, b) => a.ts - b.ts) : [];
 
-    const col = (user, entry, isMe) => `
+    const col = (user, dayList, isMe) => `
       <section class="today-col${isMe ? ' me' : ''}">
         <div class="today-col-head">
           ${avatarHtml(user)}
           <span class="today-col-name">${esc(user ? user.nick : '等待TA加入')}</span>
           ${user && user.sign ? `<span class="today-col-sign">${esc(user.sign)}</span>` : ''}
         </div>
-        ${entry
-          ? entryCard(entry, users)
+        ${dayList.length
+          ? dayList.map((e) => entryCard(e, users)).join('') +
+            (isMe ? '<button type="button" class="today-more" data-act="write">＋ 再写一篇</button>' : '')
           : `<div class="today-empty">
               <span class="te-icon">✎</span>
               <p>${user ? (isMe ? '今天还没有记录' : 'TA今天还没有记录') : 'TA还没有加入'}</p>
@@ -1084,8 +1085,8 @@
       </div>
       ${!p ? `<div class="waiting-bar">空间配对码 <b>${couple.code}</b> · 等TA用这个码注册加入，就能一起看记录</div>` : ''}
       <div class="today-grid">
-        ${col(me, mineE, true)}
-        ${col(p, partnerE, false)}
+        ${col(me, mineList, true)}
+        ${col(p, partnerList, false)}
       </div>`;
   }
 
@@ -2997,10 +2998,7 @@
   /* ---------------- 日记编辑器 ---------------- */
   function openEditor(entry) {
     if (!couple) return;
-    if (!entry) {
-      const today = todayKey();
-      entry = entries().find((e) => e.date === today && e.author === me.u) || null;
-    }
+    // 传入 entry 才是编辑；否则始终新建一篇（同一天可以写多篇）
     editingId = entry ? entry.id : null;
     editorPhotos = entry ? (entry.photos || []).slice() : [];
     moodSel = (entry && entry.mood) || '晴朗';
