@@ -30,6 +30,8 @@
     session: 'ot_session',
     token: 'ot_couple_token',
     entries: (code) => 'ot_entries_' + code,
+    msgs: (code) => 'ot_msgs_' + code,
+    chatSeen: (code) => 'ot_chatseen_' + code,
   };
   const MOODS = ['晴朗', '微风', '多云', '小雨', '开心', '想念', '平静', '激动', '疲惫', '治愈'];
 
@@ -45,6 +47,8 @@
   let cacheUsers = null;       // 云端模式下的内存缓存
   let cacheCouples = null;
   let cacheEntries = {};       // code -> [entries]
+  let cacheMsgs = {};          // code -> [messages]
+  let chatReady = true;        // 云端私信表是否可用
   let syncTimer = null;
 
   const cloudOn = () => CLOUD.enabled && typeof window.supabase !== 'undefined';
@@ -63,6 +67,11 @@
   function saveEntries(code, list) {
     if (cloudOn()) { cacheEntries[code] = list; return; }
     store.write(LS.entries(code), list);
+  }
+  function loadMsgs(code) { return cloudOn() ? (cacheMsgs[code] || []) : store.read(LS.msgs(code), []); }
+  function saveMsgs(code, list) {
+    if (cloudOn()) { cacheMsgs[code] = list; return; }
+    store.write(LS.msgs(code), list);
   }
 
   /* ---------------- 工具 ---------------- */
@@ -122,6 +131,27 @@
   function newEntryId() {
     return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
+  function newMsgId() {
+    return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+  function fmtSize(n) {
+    if (!n) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return Math.round(n / 1024) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+  function safeUrl(u) {
+    const s = String(u || '');
+    return (s.startsWith('https://') || s.startsWith('http://') || s.startsWith('data:')) ? s : '';
+  }
+  function fileToDataUrl(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(new Error('read'));
+      r.readAsDataURL(file);
+    });
+  }
 
   /* ============================================================
      云端数据层（Supabase）
@@ -179,6 +209,13 @@
       photos: r.photos || [], ts: r.ts || 0,
     };
   }
+  function rowToMsg(r) {
+    return r && {
+      id: r.id, sender: r.sender, kind: r.kind || 'text',
+      text: r.text || '', url: r.url || '',
+      name: r.name || '', size: Number(r.size) || 0, ts: Number(r.ts) || 0,
+    };
+  }
 
   const C = {
     // ---- 注册 / 登录：走云端函数，密码由服务端校验，客户端拿不到别人的密码 ----
@@ -201,6 +238,26 @@
     async fetchEntries(code) {
       const r = ck(await sb.from('lm_entries').select('*').eq('couple', code).order('ts', { ascending: false }).limit(1000));
       return (r || []).map(rowToEntry);
+    },
+    // ---- 私信：文字 / 图片 / 文件；通话信令也存在这张表里（kind = signal）----
+    async fetchMsgs(code) {
+      const r = ck(await sb.from('lm_messages').select('*').eq('couple', code)
+        .in('kind', ['text', 'image', 'file'])
+        .order('ts', { ascending: false }).limit(200));
+      return (r || []).map(rowToMsg).reverse();
+    },
+    async fetchSignals(code) {
+      const r = ck(await sb.from('lm_messages').select('*').eq('couple', code)
+        .eq('kind', 'signal').order('ts', { ascending: false }).limit(30));
+      return (r || []).map(rowToMsg);
+    },
+    async saveMsg(m, code) {
+      ck(await sb.from('lm_messages').insert({
+        id: m.id, couple: code, couple_token: store.read(LS.token, ''),
+        sender: m.sender, kind: m.kind, text: m.text || '',
+        url: m.url || '', name: m.name || '', size: m.size || 0, ts: m.ts,
+      }));
+      return m.id;
     },
     async saveCouple(c) {
       ck(await sb.from('lm_couples').update({ since: c.since, members: c.members }).eq('code', c.code));
@@ -244,6 +301,14 @@
       const { data } = sb.storage.from('photos').getPublicUrl(name);
       return data.publicUrl;
     },
+    async uploadChatFile(dataUrl, origName, contentType) {
+      const blob = await (await fetch(dataUrl)).blob();
+      const ext = String(origName || '').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6) || 'bin';
+      const path = `chat/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      ck(await sb.storage.from('photos').upload(path, blob, { contentType: contentType || 'application/octet-stream' }));
+      const { data } = sb.storage.from('photos').getPublicUrl(path);
+      return data.publicUrl;
+    },
     // ---- 组合：把「我 + 空间 + 成员 + 记录」全部拉进缓存 ----
     async pullAll() {
       if (!me) return;
@@ -268,6 +333,13 @@
             if (u) users[u.u] = u;
           }
           cacheEntries[couple.code] = await C.fetchEntries(couple.code);
+          try {
+            cacheMsgs[couple.code] = await C.fetchMsgs(couple.code);
+            chatReady = true;
+          } catch {
+            cacheMsgs[couple.code] = [];
+            chatReady = false;
+          }
           cacheCouples = { [couple.code]: couple };
         }
       }
@@ -304,6 +376,61 @@
   }
   function stopPolling() { if (syncTimer) { clearInterval(syncTimer); syncTimer = null; } }
 
+  /* ---------------- 私信轮询 + 通话信令 ---------------- */
+  function startChatPolling() {
+    stopChatPolling();
+    if (!cloudOn()) return;
+    chatTimer = setInterval(pollChat, 3000);
+    pollChat();
+  }
+  function stopChatPolling() { if (chatTimer) { clearInterval(chatTimer); chatTimer = null; } }
+
+  function isChatTableMissing(err) {
+    const s = String((err && err.message) || '');
+    return s.includes('lm_messages') || s.includes('does not exist') || s.includes('schema cache');
+  }
+
+  async function pollChat() {
+    if (!me || !couple || document.hidden) return;
+    const code = couple.code;
+    try {
+      cacheMsgs[code] = await C.fetchMsgs(code);
+      chatReady = true;
+      refreshChatIfVisible();
+    } catch (e) {
+      if (isChatTableMissing(e)) chatReady = false;
+      return;
+    }
+    try {
+      handleSignals(await C.fetchSignals(code));
+    } catch { /* 信令失败不影响聊天 */ }
+  }
+
+  function refreshChatIfVisible() {
+    if (!couple) return;
+    if (curTab === 'chat') updateChatList();
+    else refreshUnread();
+  }
+
+  function refreshUnread() {
+    if (!couple || !me) return;
+    const list = loadMsgs(couple.code);
+    chatUnread = list.filter((m) => m.sender !== me.u && m.ts > chatSeen).length;
+    const dot = $('chatDot');
+    if (!dot) return;
+    dot.hidden = chatUnread <= 0;
+    dot.textContent = chatUnread > 9 ? '9+' : String(chatUnread);
+  }
+
+  function markChatSeen() {
+    if (!couple) return;
+    chatSeen = Date.now();
+    store.write(LS.chatSeen(couple.code), chatSeen);
+    chatUnread = 0;
+    const dot = $('chatDot');
+    if (dot) dot.hidden = true;
+  }
+
   /* ---------------- 状态 ---------------- */
   let me = null;
   let couple = null;
@@ -311,6 +438,23 @@
   let editingId = null;
   let editorPhotos = [];
   let moodSel = '晴朗';
+
+  /* ---- 私信 / 通话状态 ---- */
+  let chatDraft = '';
+  let chatSeen = 0;
+  let chatUnread = 0;
+  let chatTimer = null;
+  let callState = 'idle';        // idle | calling | ringing | connecting | active
+  let pc = null;
+  let localStream = null;
+  let callTimeoutId = null;
+  let callClockId = null;
+  let callStartAt = 0;
+  let incomingOffer = null;
+  let pendingIce = [];
+  let muted = false;
+  let seenSignals = new Set();
+  let chatBusy = false;
 
   const authModal = $('authModal');
   const appEl = $('app');
@@ -538,14 +682,19 @@
     }
 
     renderTop();
+    chatSeen = couple ? (store.read(LS.chatSeen(couple.code), 0) || 0) : 0;
+    seenSignals = new Set();
     if (!couple) renderPairScreen();
     else switchAppTab(curTab);
     startPolling();
+    startChatPolling();
   }
   function closeApp() {
     appEl.hidden = true;
     document.body.classList.remove('app-open');
     stopPolling();
+    stopChatPolling();
+    if (callState !== 'idle') endCall();
   }
   $('btnExit').addEventListener('click', closeApp);
   $('btnLogout').addEventListener('click', () => {
@@ -665,11 +814,16 @@
     curTab = t;
     document.querySelectorAll('.app-tab').forEach((x) => x.classList.toggle('active', x.dataset.tab === t));
     renderMain();
+    if (t === 'chat') {
+      markChatSeen();
+      pollChat();
+    }
   }
   function renderMain() {
     if (!couple) { renderPairScreen(); return; }
     const main = $('appMain');
     if (curTab === 'today') renderToday(main);
+    else if (curTab === 'chat') renderChat(main);
     else if (curTab === 'diary') renderDiary(main);
     else if (curTab === 'photos') renderPhotos(main);
     else if (curTab === 'timeline') renderTimeline(main);
@@ -910,6 +1064,382 @@
       renderPairScreen();
     });
   }
+
+  /* ---------------- 私信 ---------------- */
+  function chatBubbles(list) {
+    if (!list.length) {
+      return '<div class="chat-empty">还没有私信。说一句「在吗」，从这里开始。</div>';
+    }
+    return list.map((m) => {
+      const mine = m.sender === me.u;
+      const u = loadUsers()[m.sender];
+      const nick = (u && u.nick) || m.sender;
+      const url = safeUrl(m.url);
+      let body = '';
+      if (m.kind === 'image' && url) {
+        body = `<a class="chat-img" href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" loading="lazy" alt=""></a>`;
+      } else if (m.kind === 'file' && url) {
+        body = `<a class="chat-file" href="${esc(url)}" target="_blank" rel="noopener" download="${esc(m.name || 'file')}">
+          <span class="cf-ic">▤</span>
+          <span class="cf-name">${esc(m.name || '文件')}</span>
+          <span class="cf-size">${fmtSize(m.size)}</span>
+        </a>`;
+      } else {
+        body = `<div class="chat-text">${esc(m.text).replace(/\n/g, '<br>')}</div>`;
+      }
+      return `
+        <div class="chat-row${mine ? ' mine' : ''}">
+          <span class="chat-ava">${esc(nick.slice(0, 1))}</span>
+          <div class="chat-bubble">${body}<span class="chat-time">${fmtTs(m.ts)}</span></div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderChat(main) {
+    const p = partner();
+    const list = loadMsgs(couple.code);
+    main.innerHTML = `
+      <div class="chat-wrap">
+        <div class="chat-head">
+          <div class="chat-title">私信<span class="chat-sub">${p ? '仅你们两人可见 · ' + esc(p.nick) : '等TA加入后就能私信和通话'}</span></div>
+          <button type="button" class="btn-primary chat-call" id="chatCall"${p && cloudOn() ? '' : ' disabled'}>☎ 语音通话</button>
+        </div>
+        ${!chatReady ? '<div class="waiting-bar">私信还没有在云端启用：请先在 Supabase 运行 说明.md 里的 lm_messages 建表 SQL。</div>' : ''}
+        <div class="chat-list" id="chatList">${chatBubbles(list)}</div>
+        <form class="chat-bar" id="chatForm">
+          <label class="chat-tool" title="发送图片">▣<input type="file" id="chatImg" accept="image/*" hidden /></label>
+          <label class="chat-tool" title="发送文件">▤<input type="file" id="chatFile" hidden /></label>
+          <input class="chat-input" id="chatInput" maxlength="500" placeholder="说点什么…" autocomplete="off" />
+          <button type="submit" class="chat-send">发送</button>
+        </form>
+      </div>`;
+    const input = $('chatInput');
+    input.value = chatDraft;
+    input.addEventListener('input', (e) => { chatDraft = e.target.value; });
+    $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); sendText(); });
+    $('chatImg').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendImage(f); });
+    $('chatFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendFile(f); });
+    $('chatCall').addEventListener('click', startCall);
+    const listEl = $('chatList');
+    listEl.scrollTop = listEl.scrollHeight;
+    markChatSeen();
+    refreshUnread();
+  }
+
+  function updateChatList() {
+    if (!couple) return;
+    const el = $('chatList');
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    el.innerHTML = chatBubbles(loadMsgs(couple.code));
+    if (nearBottom) el.scrollTop = el.scrollHeight;
+    markChatSeen();
+  }
+
+  function chatSendError(e) {
+    if (isChatTableMissing(e)) {
+      chatReady = false;
+      alert('私信还没有在云端启用：请先在 Supabase 运行 说明.md 里的建表 SQL。');
+    } else {
+      alert('发送失败，请检查网络后重试。');
+    }
+  }
+
+  async function storeMsg(m) {
+    if (cloudOn()) {
+      if (!chatReady) throw new Error('lm_messages: does not exist');
+      await C.saveMsg(m, couple.code);
+    }
+    const list = loadMsgs(couple.code);
+    list.push(m);
+    saveMsgs(couple.code, list);
+    updateChatList();
+  }
+
+  async function sendText() {
+    if (chatBusy || !couple) return;
+    const input = $('chatInput');
+    const txt = (input ? input.value : chatDraft).trim();
+    if (!txt) return;
+    if (input) input.value = '';
+    chatDraft = '';
+    chatBusy = true;
+    try {
+      await storeMsg({ id: newMsgId(), sender: me.u, kind: 'text', text: txt, url: '', name: '', size: 0, ts: Date.now() });
+    } catch (e) {
+      chatSendError(e);
+      if (input) input.value = txt;
+      chatDraft = txt;
+    } finally {
+      chatBusy = false;
+    }
+  }
+
+  async function sendImage(file) {
+    if (!file || chatBusy || !couple) return;
+    chatBusy = true;
+    try {
+      const dataUrl = await compressImage(file);
+      let url = dataUrl;
+      if (cloudOn()) url = await C.uploadPhoto(dataUrl, `chat-${me.u}-${Date.now()}.jpg`);
+      await storeMsg({ id: newMsgId(), sender: me.u, kind: 'image', text: '', url, name: file.name, size: file.size, ts: Date.now() });
+    } catch (e) {
+      chatSendError(e);
+    } finally {
+      chatBusy = false;
+    }
+  }
+
+  async function sendFile(file) {
+    if (!file || chatBusy || !couple) return;
+    if (cloudOn() && file.size > 15 * 1048576) { alert('文件不能超过 15MB。'); return; }
+    if (!cloudOn() && file.size > 2 * 1048576) { alert('本地模式下文件需小于 2MB。'); return; }
+    chatBusy = true;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      let url = dataUrl;
+      if (cloudOn()) url = await C.uploadChatFile(dataUrl, file.name, file.type || 'application/octet-stream');
+      await storeMsg({ id: newMsgId(), sender: me.u, kind: 'file', text: '', url, name: file.name, size: file.size, ts: Date.now() });
+    } catch (e) {
+      chatSendError(e);
+    } finally {
+      chatBusy = false;
+    }
+  }
+
+  /* ---------------- 语音通话（WebRTC，信令走 lm_messages） ---------------- */
+  const ICE = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    ],
+  };
+  const callOverlay = $('callOverlay');
+
+  function setCallState(s) {
+    callState = s;
+    const p = partner();
+    callOverlay.hidden = s === 'idle';
+    $('callAccept').hidden = s !== 'ringing';
+    $('callMute').hidden = s !== 'active';
+    $('callHang').hidden = s === 'idle';
+    $('callName').textContent = p ? p.nick : 'TA';
+    $('callAvatar').textContent = p ? p.nick.slice(0, 1) : '?';
+    $('callTimerText').hidden = s !== 'active';
+    $('callMute').textContent = muted ? '取消静音' : '静音';
+    const label = { calling: '正在呼叫…', ringing: '来电', connecting: '接通中…', active: '通话中' }[s];
+    if (label) $('callStatus').textContent = label;
+  }
+
+  function callClock() {
+    const t = Math.max(0, Math.floor((Date.now() - callStartAt) / 1000));
+    const mm = String(Math.floor(t / 60)).padStart(2, '0');
+    const ss = String(t % 60).padStart(2, '0');
+    $('callTimerText').textContent = mm + ':' + ss;
+  }
+  function startCallClock() {
+    if (callClockId) return;
+    callStartAt = Date.now();
+    callClock();
+    callClockId = setInterval(callClock, 1000);
+  }
+  function stopCallClock() {
+    if (callClockId) { clearInterval(callClockId); callClockId = null; }
+    callStartAt = 0;
+  }
+
+  function endCall() {
+    if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
+    stopCallClock();
+    if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
+    if (pc) {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.close();
+      pc = null;
+    }
+    const a = $('callAudio');
+    a.srcObject = null;
+    try { a.pause(); } catch { /* 忽略 */ }
+    pendingIce = [];
+    incomingOffer = null;
+    muted = false;
+    callState = 'idle';
+    callOverlay.hidden = true;
+  }
+
+  async function sendSignal(obj) {
+    if (!cloudOn() || !couple) return;
+    try {
+      await C.saveMsg({
+        id: newMsgId(), sender: me.u, kind: 'signal',
+        text: JSON.stringify(obj), url: '', name: '', size: 0, ts: Date.now(),
+      }, couple.code);
+    } catch { /* 信令失败由通话超时兜底 */ }
+  }
+
+  function setupPc() {
+    pc = new RTCPeerConnection(ICE);
+    localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+    pc.ontrack = (e) => {
+      const a = $('callAudio');
+      a.srcObject = e.streams[0];
+      a.play().catch(() => { /* 需要用户点一下页面才有声音 */ });
+    };
+    pc.onicecandidate = (e) => {
+      if (e.candidate) sendSignal({ t: 'ice', c: e.candidate.toJSON() });
+    };
+    pc.onconnectionstatechange = () => {
+      if (!pc) return;
+      if (pc.connectionState === 'connected') {
+        if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
+        setCallState('active');
+        startCallClock();
+      } else if (pc.connectionState === 'failed') {
+        $('callStatus').textContent = '连接失败（网络受限）';
+        setTimeout(() => { sendSignal({ t: 'hangup' }); endCall(); }, 1500);
+      }
+    };
+  }
+
+  function watchConnectTimeout() {
+    if (callTimeoutId) clearTimeout(callTimeoutId);
+    callTimeoutId = setTimeout(() => {
+      if (callState === 'connecting') {
+        $('callStatus').textContent = '连接失败（网络受限）';
+        sendSignal({ t: 'hangup' });
+        setTimeout(endCall, 1500);
+      }
+    }, 20000);
+  }
+
+  async function startCall() {
+    if (!cloudOn()) return alert('语音通话需要双方都在云端同步模式。');
+    if (!chatReady) return alert('语音通话还没有在云端启用：请先运行 lm_messages 建表 SQL。');
+    if (!partner()) return alert('等TA加入这个空间后，就可以通话了。');
+    if (callState !== 'idle') return;
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+        video: false,
+      });
+    } catch {
+      return alert('无法使用麦克风：请允许浏览器的麦克风权限后重试。');
+    }
+    setupPc();
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await sendSignal({ t: 'offer', sdp: pc.localDescription.toJSON() });
+      setCallState('calling');
+      callTimeoutId = setTimeout(() => {
+        if (callState === 'calling') { sendSignal({ t: 'hangup' }); endCall(); alert('对方没有接听。'); }
+      }, 45000);
+    } catch {
+      sendSignal({ t: 'hangup' });
+      endCall();
+      alert('呼叫失败，请重试。');
+    }
+  }
+
+  function onOffer(d) {
+    if (callState !== 'idle') { sendSignal({ t: 'busy' }); return; }
+    incomingOffer = d.sdp;
+    setCallState('ringing');
+    callTimeoutId = setTimeout(() => {
+      if (callState === 'ringing') { sendSignal({ t: 'hangup' }); endCall(); }
+    }, 35000);
+  }
+
+  async function acceptCall() {
+    if (callState !== 'ringing' || !incomingOffer) return;
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+        video: false,
+      });
+    } catch {
+      alert('无法使用麦克风：请允许麦克风权限。');
+      sendSignal({ t: 'hangup' });
+      endCall();
+      return;
+    }
+    if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
+    setupPc();
+    try {
+      await pc.setRemoteDescription(incomingOffer);
+      for (const c of pendingIce) { try { await pc.addIceCandidate(c); } catch { /* 跳过 */ } }
+      pendingIce = [];
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await sendSignal({ t: 'answer', sdp: pc.localDescription.toJSON() });
+      setCallState('connecting');
+      watchConnectTimeout();
+    } catch {
+      sendSignal({ t: 'hangup' });
+      endCall();
+      alert('接听失败，请重试。');
+    }
+  }
+
+  async function onAnswer(d) {
+    if (!pc || callState !== 'calling') return;
+    try {
+      await pc.setRemoteDescription(d.sdp);
+      for (const c of pendingIce) { try { await pc.addIceCandidate(c); } catch { /* 跳过 */ } }
+      pendingIce = [];
+      if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
+      setCallState('connecting');
+      watchConnectTimeout();
+    } catch {
+      sendSignal({ t: 'hangup' });
+      endCall();
+    }
+  }
+
+  async function onIce(d) {
+    if (!pc || !d || !d.c) return;
+    if (pc.remoteDescription) { try { await pc.addIceCandidate(d.c); } catch { /* 跳过 */ } }
+    else pendingIce.push(d.c);
+  }
+
+  function handleSignals(rows) {
+    if (!me) return;
+    for (const s of rows) {
+      if (!s || !s.id || seenSignals.has(s.id)) continue;
+      seenSignals.add(s.id);
+      if (s.sender === me.u) continue;
+      if (Math.abs(Date.now() - s.ts) > 120000) continue;
+      let d = null;
+      try { d = JSON.parse(s.text || '{}'); } catch { continue; }
+      if (!d || !d.t) continue;
+      if (d.t === 'offer') onOffer(d);
+      else if (d.t === 'answer') onAnswer(d);
+      else if (d.t === 'ice') onIce(d);
+      else if (d.t === 'hangup') { if (callState !== 'idle') endCall(); }
+      else if (d.t === 'busy' && callState === 'calling') {
+        $('callStatus').textContent = '对方正在通话中';
+        setTimeout(endCall, 1500);
+      }
+    }
+  }
+
+  $('callHang').addEventListener('click', () => {
+    if (callState === 'idle') return;
+    sendSignal({ t: 'hangup' });
+    endCall();
+  });
+  $('callAccept').addEventListener('click', acceptCall);
+  $('callMute').addEventListener('click', () => {
+    muted = !muted;
+    if (localStream) localStream.getAudioTracks().forEach((t) => { t.enabled = !muted; });
+    $('callMute').textContent = muted ? '取消静音' : '静音';
+  });
+  window.addEventListener('beforeunload', () => {
+    if (callState !== 'idle') sendSignal({ t: 'hangup' });
+  });
 
   function emptyState(title, sub) {
     return `<div class="empty-state"><span class="es-icon">✦</span><h3>${title}</h3><p>${sub}</p></div>`;
