@@ -22,6 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
+  const BUILD = '2026.11.09 · 20261109t';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -1714,6 +1715,7 @@
           <span class="us-v"><button type="button" class="us-link danger" id="usDelete">注销账号</button></span>
         </div>
         <div class="us-row"><span class="us-k">说明</span><span class="us-v us-hint">分享链接是只读快照，不含私信；恢复码用于忘记密码时重置；注销会删除你的数据且不可恢复。</span></div>
+        <div class="us-row"><span class="us-k">版本</span><span class="us-v us-hint">${esc(BUILD)}</span></div>
       </div>
 
       <div class="us-actions">
@@ -2050,6 +2052,7 @@
     $('hpBgBtn').addEventListener('click', () => {
       const p = $('hpDeco');
       p.hidden = !p.hidden;
+      if (!p.hidden) p.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     $('hpAvatar').addEventListener('click', () => {
       pickImage('image/*', async (f) => {
