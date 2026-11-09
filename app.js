@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109v';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109w';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2717,9 +2717,9 @@
         <div class="rec-hint" id="recHint" hidden><i></i><span>正在录音</span><b id="recTime">0:00</b><em>再点一下结束 · 最长 60 秒</em></div>
         <div class="chat-reply-bar" id="chatReplyBar" hidden></div>
         <form class="chat-bar" id="chatForm">
-          <button type="button" class="chat-tool chat-mic" id="chatMic" title="语音留言：点一下开始，再点一下发送">◉</button>
-          <label class="chat-tool" title="发送图片">▣<input type="file" id="chatImg" accept="image/*" hidden /></label>
-          <label class="chat-tool" title="发送文件">▤<input type="file" id="chatFile" hidden /></label>
+          <button type="button" class="chat-tool chat-mic" id="chatMic" data-label="语音" title="语音留言：点一下开始录音，再点一下发送" aria-label="语音留言">🎤</button>
+          <label class="chat-tool" data-label="图片" title="发送图片" aria-label="发送图片">🖼️<input type="file" id="chatImg" accept="image/*" hidden /></label>
+          <label class="chat-tool" data-label="文件" title="发送文件" aria-label="发送文件">📎<input type="file" id="chatFile" hidden /></label>
           <input class="chat-input" id="chatInput" maxlength="500" placeholder="${replyDraft ? '回复 ' + esc(replyDraft.nick || 'TA') : '说点什么…'}" autocomplete="off" />
           <button type="submit" class="chat-send">发送</button>
         </form>
@@ -2923,7 +2923,7 @@
     rec.recorder.start();
 
     const b = micBtn();
-    if (b) { b.classList.add('recording'); b.textContent = '■'; }
+    if (b) { b.classList.add('recording'); b.textContent = '⏹'; b.title = '再点一下结束录音并发送'; }
     if ($('recHint')) $('recHint').hidden = false;
     const tick = () => {
       if ($('recTime') && rec.startAt) $('recTime').textContent = fmtDuration((Date.now() - rec.startAt) / 1000);
@@ -2960,7 +2960,7 @@
     rec.chunks = [];
     rec.startAt = 0;
     const b = micBtn();
-    if (b) { b.classList.remove('recording'); b.textContent = '◉'; }
+    if (b) { b.classList.remove('recording'); b.textContent = '🎤'; b.title = '语音留言：点一下开始录音，再点一下发送'; }
     if ($('recHint')) $('recHint').hidden = true;
     if (wasCancel || !chunks.length || sec < 1 || !couple) return;
 
