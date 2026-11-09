@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>银河之约 · 功能文档</title>
+<style>
+  :root {
+    --ink: #1b2230;
+    --ink-2: #4a5568;
+    --ink-3: #7b8798;
+    --line: #e3e7ee;
+    --paper: #ffffff;
+    --bg: #f4f6fa;
+    --accent: #14538f;
+    --accent-2: #0d7d8c;
+    --gold: #9a6b12;
+    --chip: #eef3fa;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", Consolas, "JetBrains Mono", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 940px; margin: 0 auto; background: var(--paper); box-shadow: 0 20px 60px rgba(20, 30, 60, .08); }
+
+  header.cover { padding: 56px 56px 44px; background: linear-gradient(135deg, #06101f 0%, #0c1c33 55%, #101c2e 100%); color: #e8effa; position: relative; overflow: hidden; }
+  header.cover::after { content: ""; position: absolute; inset: 0; background:
+    radial-gradient(circle at 82% 18%, rgba(212,160,23,.18), transparent 42%),
+    radial-gradient(circle at 12% 84%, rgba(34,211,238,.12), transparent 46%); pointer-events: none; }
+  .cover-tag { font-family: var(--mono); font-size: 11px; letter-spacing: .26em; color: #8fb3d9; }
+  header.cover h1 { font-size: 40px; font-weight: 300; letter-spacing: .08em; margin: 16px 0 10px; }
+  .cover-sub { color: #a9bdd6; font-size: 15px; max-width: 640px; }
+  .cover-meta { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; }
+  .cover-meta span { border: 1px solid rgba(160, 190, 225, .28); color: #cfe0f2; padding: 5px 12px; border-radius: 100px; }
+
+  nav.toc { padding: 28px 56px; border-bottom: 1px solid var(--line); background: #fbfcfe; }
+  nav.toc b { display: block; font-size: 11px; letter-spacing: .24em; color: var(--ink-3); margin-bottom: 14px; }
+  nav.toc ol { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; }
+  nav.toc a { color: var(--ink-2); text-decoration: none; font-size: 14px; display: flex; gap: 10px; padding: 3px 0; }
+  nav.toc a span { font-family: var(--mono); font-size: 11px; color: var(--ink-3); padding-top: 3px; }
+  nav.toc a:hover { color: var(--accent); }
+
+  main { padding: 12px 56px 64px; }
+  section { padding-top: 42px; }
+  h2 { font-size: 22px; font-weight: 600; letter-spacing: .02em; padding-bottom: 10px; border-bottom: 2px solid var(--ink); display: flex; align-items: baseline; gap: 12px; }
+  h2 .no { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .1em; }
+  h3 { font-size: 15px; font-weight: 600; margin: 26px 0 10px; color: var(--ink); }
+  p, li { font-size: 14px; color: var(--ink-2); }
+  p { margin: 10px 0; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  strong { color: var(--ink); font-weight: 600; }
+  code { font-family: var(--mono); font-size: 12px; background: #eff3f9; padding: 2px 6px; border-radius: 4px; color: #24405f; }
+  .note { border-left: 3px solid var(--gold); background: #fdf8ec; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 13px; color: #5c4a20; }
+  .note b { color: #7a5a12; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 8px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-size: 12px; letter-spacing: .08em; color: var(--ink-3); font-weight: 600; }
+  td.k { width: 168px; color: var(--ink); font-weight: 600; }
+  td.v { color: var(--ink-2); }
+  tr:last-child td { border-bottom: 1px solid var(--line); }
+
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: #fbfcfe; }
+  .card h4 { font-size: 13px; letter-spacing: .06em; margin-bottom: 6px; color: var(--ink); }
+  .card p { margin: 0; font-size: 13px; }
+
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; font-size: 12.5px; }
+  .flow i { font-style: normal; background: var(--chip); border: 1px solid #dfe7f2; color: #2d4766; padding: 5px 12px; border-radius: 100px; }
+  .flow em { font-style: normal; color: var(--ink-3); }
+
+  .status { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 100px; letter-spacing: .05em; white-space: nowrap; }
+  .s-on { background: #e8f6ee; color: #1a6b3c; border: 1px solid #c7e7d4; }
+  .s-plan { background: #fdf1e3; color: #8a5410; border: 1px solid #f0dcc2; }
+
+  footer { padding: 26px 56px 40px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 720px) {
+    header.cover, nav.toc, main, footer { padding-left: 22px; padding-right: 22px; }
+    header.cover h1 { font-size: 30px; }
+    nav.toc ol { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: 1fr; }
+    td.k { width: 108px; }
+    th, td { padding: 9px 10px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .page { box-shadow: none; max-width: none; }
+    section { page-break-inside: avoid; }
+    nav.toc { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="cover">
+  <div class="cover-tag">PRODUCT DOCUMENT · V1</div>
+  <h1>银河之约 · 功能文档</h1>
+  <p class="cover-sub">一个只属于两个人的纪念网站：公开的星空首页负责「好看」，登录后的私密空间负责「收藏」。本文档完整描述目前已上线的全部功能、使用方式、数据规则与限制。</p>
+  <div class="cover-meta">
+    <span>2026-11-09</span>
+    <span>纯前端 + Supabase</span>
+    <span>GitHub Pages 部署</span>
+    <span>PC / 手机 / 可安装 PWA</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <b>目录</b>
+  <ol>
+    <li><a href="#a1"><span>01</span>产品概览</a></li>
+    <li><a href="#a2"><span>02</span>访客首页</a></li>
+    <li><a href="#a3"><span>03</span>账号与配对</a></li>
+    <li><a href="#a4"><span>04</span>空间七个页面</a></li>
+    <li><a href="#a5"><span>05</span>个人主页与装饰</a></li>
+    <li><a href="#a6"><span>06</span>私信与通话</a></li>
+    <li><a href="#a7"><span>07</span>记忆产物（年鉴 / 日历 / 备份）</a></li>
+    <li><a href="#a8"><span>08</span>数据与同步</a></li>
+    <li><a href="#a9"><span>09</span>主题、引导与离线</a></li>
+    <li><a href="#a10"><span>10</span>安全模型</a></li>
+    <li><a href="#a11"><span>11</span>技术与文件结构</a></li>
+    <li><a href="#a12"><span>12</span>数据表与依赖</a></li>
+    <li><a href="#a13"><span>13</span>已知限制</a></li>
+    <li><a href="#a14"><span>14</span>未上线规划</a></li>
+    <li><a href="#a15"><span>15</span>验收清单</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="a1">
+  <h2><span class="no">01</span>产品概览</h2>
+
+  <p>银河之约由两层组成：<strong>公开首页</strong>是所有访客都能看的品牌落地页，用星图、地球、纪念日、照片墙演示「这个产品长什么样」；<strong>私密空间</strong>是登录后两个人的真实空间，存放日记、照片、私信与全部纪念。</p>
+
+  <table>
+    <tr><td class="k">产品定位</td><td class="v">情侣纪念与日常记录工具，强调「只给两个人看」的私密感和仪式感</td></tr>
+    <tr><td class="k">访问方式</td><td class="v">浏览器打开网址即可；可「添加到主屏幕」当 App 用，断网仍能看已缓存的页面</td></tr>
+    <tr><td class="k">账号形态</td><td class="v">两个独立账号 + 一枚 6 位配对码，配对后共享同一个空间</td></tr>
+    <tr><td class="k">数据形态</td><td class="v">文字、照片、文件、语音、语音/视频通话，全部围绕「两个人」组织</td></tr>
+    <tr><td class="k">存储方式</td><td class="v">本地模式（只存本机浏览器）或云端模式（Supabase，两台设备实时同步）</td></tr>
+    <tr><td class="k">演示数据</td><td class="v">首页所有内容均为演示数据，不含真实个人信息；真实数据只存在于私密空间</td></tr>
+  </table>
+
+  <div class="note"><b>一句话理解：</b>首页是「橱窗」，情侣空间是「家」。装修橱窗不影响家里的东西；家里有什么，只有你们两个人知道。</div>
+</section>
+
+<section id="a2">
+  <h2><span class="no">02</span>访客首页</h2>
+
+  <p>首页按浏览顺序分为：开屏加载 → 品牌大标题与地球 → 星图 → 纪念日 → 日记 → 照片墙 → 私语与相见 → 留言板。底部有胶囊导航，滚动时自动高亮当前区块。</p>
+
+  <h3>2.1 视觉与动效</h3>
+  <table>
+    <tr><td class="k">真实地球</td><td class="v">用三张贴图叠加渲染：白天地表、云层、城市夜灯；带昼夜渐变、大气散射、晨昏线与海面微光。素材缺失时自动退回程序化地球，不会黑屏</td></tr>
+    <tr><td class="k">星空背景</td><td class="v">粒子星场 + 银河光带缓慢旋转 + 低透明度星座线稿（随滚动轻微视差）</td></tr>
+    <tr><td class="k">点击星空</td><td class="v">在空白处点击会落下一颗发光星，自动与上一颗连线；约 9 秒后用 6 秒渐隐消散，左下角可一键清除（不做持久保存）</td></tr>
+    <tr><td class="k">氛围细节</td><td class="v">胶片颗粒、暗角、鼠标光晕（触屏设备自动关闭）、区块入场动画</td></tr>
+    <tr><td class="k">开屏动画</td><td class="v">启动时有一段加载动画；网址加 <code>?dev</code> 可跳过（调试用）</td></tr>
+  </table>
+
+  <h3>2.2 五个内容区块</h3>
+  <table>
+    <tr><td class="k">星图（演示）</td><td class="v">赤道坐标系星图：赤经赤纬刻度、银河带、背景星场、两座星座连线与代表星准星、两星角距标注。带 <strong>DEMO</strong> 角标，示意「把两个人的星座连成一张图」</td></tr>
+    <tr><td class="k">纪念日（演示）</td><td class="v">三列卡片，自动判断「已过去 / 倒计时 / 就是今天」；桌面三列、手机两列自适应</td></tr>
+    <tr><td class="k">日记（演示）</td><td class="v">两篇示例日记卡片，展示心情标记、图文混排、私密可见等卖点</td></tr>
+    <tr><td class="k">照片墙（演示）</td><td class="v">编辑式拼贴排版，点击可放大预览，悬停显示说明文字</td></tr>
+    <tr><td class="k">私语与相见</td><td class="v">展示「私信 + 通话」能力的引导区块，把访客引向注册</td></tr>
+  </table>
+
+  <h3>2.3 留言板与建议</h3>
+  <ul>
+    <li><strong>留言板</strong>：终端风格，访客留言保存在当前设备的 localStorage，只有这台电脑/手机能看到，用于体验交互。</li>
+    <li><strong>给作者的建议</strong>：表单提交后写入云端 <code>lm_feedback</code> 表，作者在 Supabase 后台查看，用于收集产品改进需求。</li>
+  </ul>
+
+  <h3>2.4 入口</h3>
+  <p>首页提供两条进入路径：点击「开启属于我们的空间」按钮，或点击底部导航的「空间」。未登录时先看到登录/注册弹窗。</p>
+</section>
+
+<section id="a3">
+  <h2><span class="no">03</span>账号与配对</h2>
+
+  <div class="flow"><i>注册（第一个人）</i><em>→</em><i>创建空间，拿到配对码</i><em>→</em><i>把配对码发给 TA</i><em>→</em><i>注册（第二个人）</i><em>→</em><i>输入配对码加入</i><em>→</em><i>两人看到同一个空间</i></div>
+
+  <table>
+    <tr><td class="k">账号字段</td><td class="v">用户名、密码、昵称、星座、生日（昵称、星座、生日用于资料卡与纪念日日历）</td></tr>
+    <tr><td class="k">密码存储</td><td class="v">服务端以 <code>sha256(密码)</code> 保存，不存明文；老账号首次登录成功后自动升级为 sha256</td></tr>
+    <tr><td class="k">配对码</td><td class="v">6 位大写字符，创建空间时生成，可在「今日」页顶部和「我们」页查看</td></tr>
+    <tr><td class="k">加入空间</td><td class="v">第二个人注册时选择「加入TA的空间」并填写配对码；也可注册后在空间内用配对码加入</td></tr>
+    <tr><td class="k">解除配对</td><td class="v">「我们」页底部「解除配对」，需二次确认；解除后空间数据不再对彼此可见，账号保留</td></tr>
+    <tr><td class="k">登录态</td><td class="v">保存在本机 localStorage，下次打开自动进入空间；点右上角「退出」可退出</td></tr>
+    <tr><td class="k">一人一空间</td><td class="v">一个账号同一时间只属于一个空间；空间最多两人</td></tr>
+  </table>
+
+  <div class="note"><b>演示 / 调试入口：</b>网址后加 <code>?demo=1</code> 会自动灌入一对演示情侣与几天示例记录并直接进入空间（仅本地模式生效），用于体验功能，不影响真实账号。</div>
+</section>
+
+<section id="a4">
+  <h2><span class="no">04</span>空间七个页面</h2>
+
+  <p>登录后进入全屏空间界面，顶栏固定：左侧是两人的名字与「在一起第 N 天」，中间是七个标签页，右侧是「写日记」「提醒」「退出」。</p>
+
+  <h3>4.1 今日</h3>
+  <ul>
+    <li>两个人的<strong>今天</strong>并排展示，谁写了、谁还没写一眼可见。</li>
+    <li>未写的一侧显示「今天还没记录」的空状态提示。</li>
+    <li>自己的那篇可以直接编辑或删除。</li>
+  </ul>
+
+  <h3>4.2 日记</h3>
+  <table>
+    <tr><td class="k">写作规则</td><td class="v">每人每天一篇；当天再次点「＋ 写日记」会打开已写的那篇继续修改</td></tr>
+    <tr><td class="k">字段</td><td class="v">心情（10 种：晴朗 / 微风 / 多云 / 小雨 / 开心 / 想念 / 平静 / 激动 / 疲惫 / 治愈）、标题（可空）、正文</td></tr>
+    <tr><td class="k">照片</td><td class="v">一篇最多 <strong>9 张</strong>；自动压缩到最长边 1280px、JPEG 质量 0.82；单张超过 20MB 会被跳过并提示</td></tr>
+    <tr><td class="k">展示</td><td class="v">按日期倒序分组；两个人都写了的日子标记「❤ 都记录了」</td></tr>
+    <tr><td class="k">权限</td><td class="v">只能编辑/删除自己的记录，不能改动对方的</td></tr>
+  </table>
+
+  <h3>4.3 照片</h3>
+  <ul>
+    <li>自动汇总日记里所有照片，形成相册。</li>
+    <li>按<strong>月份聚合</strong>：每个月一个分组标题，显示该月张数。</li>
+    <li>点击任意一张可全屏预览。</li>
+  </ul>
+
+  <h3>4.4 足迹</h3>
+  <p>时间线视角：两个人的所有记录按时间顺序串成一条光轨，用来回看「我们是怎么走到今天的」。</p>
+
+  <h3>4.5 主页</h3>
+  <p>见下一节（个人主页与装饰）。</p>
+
+  <h3>4.6 我们</h3>
+  <table>
+    <tr><td class="k">两张资料卡</td><td class="v">头像、昵称、星座、生日；卡上按钮：自己的「编辑资料 / 我的主页」，对方的「查看TA的主页」</td></tr>
+    <tr><td class="k">在一起的日子</td><td class="v">可修改的日期，决定顶栏天数、纪念日、年鉴统计</td></tr>
+    <tr><td class="k">配对码</td><td class="v">展示 6 位码，便于对方加入</td></tr>
+    <tr><td class="k">统计</td><td class="v">共同记录（多少篇日记 / 多少张照片）、连续记录天数</td></tr>
+    <tr><td class="k">存储方式</td><td class="v">显示「本机浏览器」或「云端同步」</td></tr>
+    <tr><td class="k">界面皮肤</td><td class="v">深空 / 极简白 / 胶片暖 三选一</td></tr>
+    <tr><td class="k">记忆与导出</td><td class="v">生成回忆年鉴、导出纪念日日历、导出我们的数据、解除配对、再看一次新手引导</td></tr>
+  </table>
+
+  <h3>4.7 私信</h3>
+  <p>见「私信与通话」一节。</p>
+</section>
+
+<section id="a5">
+  <h2><span class="no">05</span>个人主页与装饰</h2>
+
+  <p>每个人都有自己的小主页，用来「装修」自己。自己的主页可编辑，对方的主页只读——你能看 TA 的背景和签名，但不能改。</p>
+
+  <table>
+    <tr><td class="k">背景板</td><td class="v">6 款预设渐变（深空 / 星云 / 胶片 / 雾粉 / 极光 / 墨金）+ 上传自己的图片（≤ 5MB，自动压缩到 1600px）。横幅上叠加细微星点</td></tr>
+    <tr><td class="k">头像</td><td class="v">点击头像上传，自动压缩到 512px；未设置时显示昵称首字。头像会同步出现在今日、日记、我们页与顶栏</td></tr>
+    <tr><td class="k">昵称</td><td class="v">最多 24 字，保存后各处立即更新</td></tr>
+    <tr><td class="k">个性签名</td><td class="v">最多 40 字，显示在昵称下方，加「」引号呈现</td></tr>
+    <tr><td class="k">统计卡</td><td class="v">写过的日记数、照片数、记录天数、最近心情</td></tr>
+    <tr><td class="k">最近记录</td><td class="v">最近 5 条，显示日期、心情、标题或正文摘要、照片数</td></tr>
+    <tr><td class="k">编辑入口</td><td class="v">两处：顶栏「主页」→「编辑资料」/「✦ 装饰背景」；「我们」页自己资料卡上的「编辑资料」</td></tr>
+    <tr><td class="k">对方主页</td><td class="v">「我们」页点对方资料卡或「查看TA的主页」，以浮层只读展示，可关闭返回</td></tr>
+  </table>
+
+  <div class="note"><b>依赖：</b>云端保存头像与背景需要 <code>lm_users.avatar</code>、<code>lm_users.deco</code> 两个字段和数据库函数 <code>lm_update_profile</code>（见第 12 节）。未执行时浏览不受影响，保存会提示。</div>
+</section>
+
+<section id="a6">
+  <h2><span class="no">06</span>私信与通话</h2>
+
+  <h3>6.1 私信</h3>
+  <table>
+    <tr><td class="k">消息类型</td><td class="v">文字、图片、文件、语音留言；另有系统信号消息（通话用），不在聊天记录里显示为普通消息</td></tr>
+    <tr><td class="k">图片</td><td class="v">≤ 20MB；云端上传到 Storage 后发送链接</td></tr>
+    <tr><td class="k">文件</td><td class="v">扩展名白名单（图片/音频/视频/PDF/Office/压缩包/文本等）；云端 ≤ 15MB，本地模式 ≤ 2MB</td></tr>
+    <tr><td class="k">语音留言</td><td class="v">点麦克风开始录音，再点一下发送；<strong>最长 60 秒自动停止</strong>；录制中显示计时与取消；气泡显示「语音留言 · 0:07」并可直接播放</td></tr>
+    <tr><td class="k">未读提示</td><td class="v">顶栏「私信」标签红点；进入私信自动标记已读</td></tr>
+    <tr><td class="k">刷新</td><td class="v">云端模式约每 20 秒自动拉取新消息；发送即时生效</td></tr>
+  </table>
+
+  <h3>6.2 语音 / 视频通话</h3>
+  <ul>
+    <li>基于 WebRTC，点对点通话；信令写入 <code>lm_messages</code> 表（<code>kind = signal</code>）。</li>
+    <li>入口：私信页「☎ 语音」按钮，以及视频通话入口。</li>
+    <li>要求：双方都在云端模式、对方已加入空间、私信表已建好；否则按钮禁用并给出对应提示。</li>
+    <li>通话浮层：远端画面、本地小窗、对方头像与昵称、状态文字（呼叫中/通话中/对方正在通话中）、计时、接听/静音/挂断。</li>
+  </ul>
+</section>
+
+<section id="a7">
+  <h2><span class="no">07</span>记忆产物</h2>
+
+  <h3>7.1 回忆年鉴</h3>
+  <p>「我们」页点「生成回忆年鉴」，用 canvas 现场绘制一张 <strong>1080 × 1350</strong> 的图片卡片：深空渐变底、随机星点、描边框、英文等宽小标、中文正文，内容包括当年年份、在一起的年数与天数、日记数、照片数、最常心情、最活跃月份、记录最多的人、一句收尾引语。</p>
+  <ul>
+    <li>可重新生成（换一批星点与统计），可下载 PNG 保存或分享。</li>
+    <li>纯本地绘制，不上传服务器。</li>
+  </ul>
+
+  <h3>7.2 纪念日日历（.ics）</h3>
+  <p>「我们」页点「导出纪念日日历」，下载 <code>我们的纪念日-配对码.ics</code>，导入手机/电脑日历后长期有效：</p>
+  <table>
+    <tr><td class="k">在一起纪念日</td><td class="v">以「在一起的日子」为起点，<strong>每年重复</strong>（RRULE:FREQ=YEARLY）</td></tr>
+    <tr><td class="k">数字节点</td><td class="v">第 100 / 520 / 1000 / 1314 天，单次提醒</td></tr>
+    <tr><td class="k">生日</td><td class="v">双方生日，各每年重复</td></tr>
+    <tr><td class="k">兼容</td><td class="v">UID 稳定（重复导入不会产生重复条目）；全天事件（VALUE=DATE）；UTF-8 + CRLF 标准格式</td></tr>
+  </table>
+
+  <h3>7.3 数据导出（JSON）</h3>
+  <p>「我们」页点「导出我们的数据」，下载一份完整备份，包含：空间信息（配对码、在一起的日子）、成员资料（<strong>不含密码</strong>）、全部日记、全部私信、照片链接清单。</p>
+</section>
+
+<section id="a8">
+  <h2><span class="no">08</span>数据与同步</h2>
+
+  <h3>8.1 两种模式</h3>
+  <table>
+    <tr><td class="k">本地模式</td><td class="v">数据只存在这台设备的浏览器（localStorage）。断网可用、零配置；换设备或清浏览器数据会丢失，需靠导出备份</td></tr>
+    <tr><td class="k">云端模式</td><td class="v">数据存 Supabase，两人各自设备实时同步；照片与文件存 Storage。约 20 秒轮询一次，写入立即生效</td></tr>
+    <tr><td class="k">切换</td><td class="v">代码顶部 <code>CLOUD.enabled</code> 控制；两种模式的数据互不相通</td></tr>
+  </table>
+
+  <h3>8.2 同步状态</h3>
+  <p>云端模式顶栏显示状态点：绿色「云端已同步」；网络异常时显示红色「同步失败」，并自动重试。云端模式下若账号在后台被删除，会在下次拉取时自动退出并回到登录页。</p>
+
+  <h3>8.3 容量与限制</h3>
+  <table>
+    <tr><td class="k">日记照片</td><td class="v">单篇最多 9 张；单张 ≤ 20MB（压缩后通常远小于此）</td></tr>
+    <tr><td class="k">头像</td><td class="v">≤ 20MB，压缩到 512px</td></tr>
+    <tr><td class="k">背景图</td><td class="v">≤ 5MB，压缩到 1600px</td></tr>
+    <tr><td class="k">私信文件</td><td class="v">白名单扩展名；云端 ≤ 15MB，本地 ≤ 2MB</td></tr>
+    <tr><td class="k">语音留言</td><td class="v">单条最长 60 秒</td></tr>
+    <tr><td class="k">云端额度</td><td class="v">Supabase 免费版 Storage 约 1GB，两人日常够用；免费项目 7 天完全无活动会暂停，登录后台点 Restore 即可恢复（数据不丢）</td></tr>
+  </table>
+</section>
+
+<section id="a9">
+  <h2><span class="no">09</span>主题、引导与离线</h2>
+
+  <h3>9.1 三套皮肤</h3>
+  <table>
+    <tr><td class="k">深空（默认）</td><td class="v">深蓝黑底、青色与金色点缀，保留全部星空、地球、银河氛围层</td></tr>
+    <tr><td class="k">极简白</td><td class="v">浅底深字，隐藏星空/星云/银河/颗粒/暗角等装饰层，面板改白；首页标题改深金蓝渐变；适合白天与打印式阅读</td></tr>
+    <tr><td class="k">胶片暖</td><td class="v">暖褐色调，星空与地球叠加棕褐滤镜，标题奶油金渐变，整体像老胶片</td></tr>
+  </table>
+  <p>切换入口在「我们」页「界面皮肤」；选择会保存在本机，并同时作用于首页与空间。</p>
+
+  <h3>9.2 新手引导</h3>
+  <ul>
+    <li>首次进入空间时出现三步引导：<strong>记录 / 相伴 / 回望</strong>，分别介绍写日记、私信与通话、年鉴与导出。</li>
+    <li>可逐页「下一步」，也可跳过；完成后本机记录标记，不再自动出现。</li>
+    <li>想重看：随时点「我们」页的「再看一次新手引导」。</li>
+  </ul>
+
+  <h3>9.3 可安装（PWA）与离线</h3>
+  <table>
+    <tr><td class="k">安装</td><td class="v">支持「添加到主屏幕」，独立窗口运行；桌面与手机图标齐全</td></tr>
+    <tr><td class="k">离线</td><td class="v">Service Worker 预缓存首页、样式、脚本、图标与示例图片；离线时页面可打开，图片与最近缓存的资源可见</td></tr>
+    <tr><td class="k">更新策略</td><td class="v">页面导航网络优先；脚本与样式网络优先（带版本号，更新立即生效，离线回退缓存）；图片按完整地址精确命中缓存；新版本接管后自动刷新一次</td></tr>
+  </table>
+</section>
+
+<section id="a10">
+  <h2><span class="no">10</span>安全模型</h2>
+
+  <table>
+    <tr><td class="k">行级安全</td><td class="v"><code>lm_users / lm_couples / lm_entries / lm_messages</code> 开启 RLS，匿名请求读不到数据</td></tr>
+    <tr><td class="k">配对令牌</td><td class="v">每个空间有一枚 32 位随机令牌，同时写入两名成员的账号与该空间所有数据；前端用请求头 <code>x-couple-token</code> 发送，策略只放行令牌匹配的行</td></tr>
+    <tr><td class="k">账号操作</td><td class="v">注册、登录、创建/加入/解除空间、修改个人资料均由数据库函数完成，前端不直接读写账号密码字段</td></tr>
+    <tr><td class="k">密码</td><td class="v">仅存 <code>sha256</code> 摘要；旧账号兼容登录后自动升级</td></tr>
+    <tr><td class="k">访客建议</td><td class="v"><code>lm_feedback</code> 开启 RLS，只允许插入，不允许读</td></tr>
+    <tr><td class="k">可接受风险</td><td class="v">Storage 的 <code>photos</code> 桶为公开读，知道文件路径即可访问；私密性主要由配对码 + 令牌保证。若要彻底收紧，需给 Storage 增加同样的令牌策略</td></tr>
+    <tr><td class="k">密钥说明</td><td class="v">前端使用的 publishable key 公开可见属于正常设计，真正的隔离靠令牌与 RLS</td></tr>
+  </table>
+</section>
+
+<section id="a11">
+  <h2><span class="no">11</span>技术与文件结构</h2>
+
+  <div class="cards">
+    <div class="card"><h4>index.html</h4><p>首页结构、登录/注册框、空间容器、各浮层（年鉴、引导、个人资料、通话、对方主页）</p></div>
+    <div class="card"><h4>style.css</h4><p>深空主视觉、三套皮肤变量、空间布局、全部浮层与响应式断点</p></div>
+    <div class="card"><h4>script.js</h4><p>首页交互：星图绘制、纪念日、照片墙预览、留言板、背景动效；顶部 CONFIG 为演示数据</p></div>
+    <div class="card"><h4>app.js</h4><p>账号、空间七个页面、日记/照片/私信/通话、年鉴、ICS、导出、皮肤、引导、PWA 注册</p></div>
+    <div class="card"><h4>sw.js + manifest.webmanifest</h4><p>离线缓存与安装能力；缓存策略见 9.3</p></div>
+    <div class="card"><h4>images/</h4><p>地球三张贴图、示例照片与占位图；换图保持 2:1 等距圆柱比例</p></div>
+  </div>
+
+  <table>
+    <tr><td class="k">前端形态</td><td class="v">纯静态站点，无构建步骤、无后端服务；双击 index.html 也能跑（本地模式）</td></tr>
+    <tr><td class="k">后端</td><td class="v">Supabase：Postgres + RLS + 数据库函数 + Storage</td></tr>
+    <tr><td class="k">部署</td><td class="v">GitHub Pages，推送到 main 后约 1 分钟自动生效</td></tr>
+    <tr><td class="k">兼容</td><td class="v">Chrome / Edge / Safari / Firefox 现代版本；手机端 390px 起适配，无横向溢出</td></tr>
+    <tr><td class="k">版本更新</td><td class="v">样式与脚本带 <code>?v=</code> 版本参数，配合 SW 网络优先策略，更新后自动生效</td></tr>
+  </table>
+</section>
+
+<section id="a12">
+  <h2><span class="no">12</span>数据表与依赖</h2>
+
+  <table>
+    <tr><th>表 / 函数</th><th>用途</th><th>状态</th></tr>
+    <tr><td><code>lm_users</code></td><td>账号、昵称、星座、生日、所属空间、令牌；新增 <code>avatar</code>、<code>deco</code></td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_couples</code></td><td>空间：配对码、在一起的日子、成员、令牌</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_entries</code></td><td>日记：作者、日期、心情、标题、正文、照片数组</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_messages</code></td><td>私信：文字/图片/文件/语音/通话信令</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_feedback</code></td><td>访客给作者的建议（只允许插入）</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>storage: photos</code></td><td>照片、私信附件、语音、头像、背景图</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_login / lm_register</code></td><td>登录、注册（校验密码、返回令牌）</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_create_space / lm_join_space / lm_leave_space</code></td><td>创建、加入、解除空间</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_me</code></td><td>按令牌返回当前用户</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td><code>lm_update_profile</code></td><td>更新昵称、头像、装饰；校验令牌，只能改自己</td><td><span class="status s-on">已上线</span></td></tr>
+  </table>
+
+  <div class="note"><b>部署前置：</b>云端模式需要先按说明文档执行建表 SQL，再填写项目地址与 key；个人主页另需执行 <code>avatar/deco</code> 两列与 <code>lm_update_profile</code> 的 SQL。完整语句见项目内「说明.md」第 5 节与末节「个人主页」。</div>
+</section>
+
+<section id="a13">
+  <h2><span class="no">13</span>已知限制</h2>
+  <ul>
+    <li><strong>一人一天一篇日记</strong>：当天想补记只能编辑原篇，不提供第二篇。</li>
+    <li><strong>照片只来自日记</strong>：相册由日记照片汇总，不能直接向相册上传独立照片。</li>
+    <li><strong>没有回复/引用</strong>：私信为纯消息流，不支持引用、表情回应、撤回。</li>
+    <li><strong>通话依赖云端</strong>：本地模式不能通话；双方都必须在线且网络可直连（极端 NAT 下可能连不通，无 TURN 中继）。</li>
+    <li><strong>解除配对不可撤销</strong>：解除后空间分离，需要重新配对；建议先导出备份。</li>
+    <li><strong>账号找回</strong>：需先在「我们」页生成恢复码；忘记密码时用恢复码自助重置。恢复码只显示一次，丢失后无法找回。</li>
+    <li><strong>Storage 公开读</strong>：知道资源路径即可访问，见第 10 节。</li>
+    <li><strong>年鉴为静态图片</strong>：生成后不随数据自动更新，需要重新生成。</li>
+    <li><strong>首页数据为演示</strong>：星图、纪念日、照片墙均为示例，想知道真实数据请进空间查看。</li>
+  </ul>
+</section>
+
+<section id="a14">
+  <h2><span class="no">14</span>约定与新能力（已上线）</h2>
+  <p>以下功能已于 <strong>2026-11-09</strong> 上线：空间新增「约定」标签页（每日一问 / 时间胶囊 / 心愿清单），「我们」页新增只读分享、恢复码与注销。首次使用前需要在 Supabase 执行 <code>说明.md</code> 中「约定」一节的 SQL。</p>
+  <table>
+    <tr><th>功能</th><th>说明</th><th>状态</th></tr>
+    <tr><td>时间胶囊</td><td>写信设定解锁日，到期前只显示标题与解锁日（作者本人也看不到正文）</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td>每日一问</td><td>每天一道共同题目，两人分别作答，双方都答完后可互看</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td>100 件小事 / 愿望清单</td><td>一键载入 100 件小事，或自由添加愿望；可打卡、删除、查看进度</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td>只读分享快照</td><td>生成 8 位码的只读链接，含统计与最近记录，不含私信</td><td><span class="status s-on">已上线</span></td></tr>
+    <tr><td>恢复码与注销</td><td>「我们」页设置恢复码；登录页可自助重置密码；支持彻底注销账号与数据</td><td><span class="status s-on">已上线</span></td></tr>
+  </table>
+</section>
+
+<section id="a15">
+  <h2><span class="no">15</span>验收清单</h2>
+
+  <p>按顺序执行以下检查，可确认整套系统是好的：</p>
+  <ol>
+    <li>首页：断网刷新仍能显示；点击空白处有星落下并连线；底部导航滚动高亮正确。</li>
+    <li>账号：注册 → 拿到配对码 → 另一账号加入 → 两人看到彼此昵称与同一天数。</li>
+    <li>日记：写一篇带 3 张照片；同一天再点「写日记」进入编辑；照片出现压缩后的小图。</li>
+    <li>照片页：看到按月份分组的相册；点击可放大。</li>
+    <li>私信：发一条文字、一张图、一个文件、一段语音；红点消失；刷新后消息还在。</li>
+    <li>主页：换头像、改昵称与签名、切一个背景；刷新后仍保留（云端模式）。</li>
+    <li>对方主页：只读打开、可关闭，没有编辑按钮。</li>
+    <li>我们：改在一起的日子，顶栏天数变化；连续记录天数合理。</li>
+    <li>年鉴：生成图片，尺寸 1080 × 1350，可下载。</li>
+    <li>日历：导出 .ics，导入系统日历能看到年度重复的纪念日与生日。</li>
+    <li>导出：JSON 里能找到日记、私信与照片链接，且不含密码。</li>
+    <li>皮肤：切到极简白与胶片暖，首页与空间同时变化，文字清晰可读。</li>
+    <li>手机：390px 宽度下无横向滚动，七个标签可点，输入框可用。</li>
+    <li>PWA：浏览器提示可安装，装好后独立窗口打开正常。</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  <span>银河之约 · 功能文档 V1 · 2026-11-09</span>
+  <span>与代码同步维护：功能有增减时请更新本文档</span>
+</footer>
+
+</div>
+</body>
+</html>
