@@ -1753,6 +1753,69 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   pointer-events: none;
 }
 
+/* ---- 自动年鉴面板（足迹页顶部实时刷新）---- */
+.yearbook-panel {
+  max-width: 720px;
+  margin: 0 auto 24px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(129,140,248,0.06));
+  border: 1px solid rgba(56,189,248,0.18);
+  position: relative;
+  overflow: hidden;
+}
+.yearbook-panel::before {
+  content: '';
+  position: absolute; inset: -40% -40% auto auto;
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(56,189,248,0.12), transparent 70%);
+  pointer-events: none;
+}
+.yp-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.yp-head h3 { font-size: 16px; font-weight: 400; letter-spacing: 0.08em; color: var(--white); }
+.yp-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--white-faint); }
+.yp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.yp-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: rgba(13,20,42,0.4);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 10px;
+}
+.yp-cell.wide { grid-column: span 4; align-items: stretch; padding: 12px 14px; }
+.yp-num { font-size: 22px; font-weight: 300; letter-spacing: 0.04em; color: var(--cyan); font-family: var(--font-mono); }
+.yp-lbl { font-size: 11px; letter-spacing: 0.14em; color: var(--white-mute); text-align: center; }
+.yp-cell.wide .yp-lbl { text-align: left; margin-bottom: 8px; display: block; }
+.yp-moods { display: flex; flex-direction: column; gap: 4px; }
+.yp-mood {
+  position: relative;
+  font-size: 11.5px;
+  color: var(--white-dim);
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+.yp-mood i {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, rgba(129,140,248,0.35), rgba(56,189,248,0.2));
+  border-radius: 6px;
+  z-index: 0;
+}
+.yp-mood { z-index: 1; }
+.yp-moods .yp-mood span, .yp-moods .yp-mood i + * { position: relative; z-index: 1; }
+.yp-empty { font-size: 11px; color: var(--white-mute); }
+
 /* ---- 足迹时间线 ---- */
 .tl { max-width: 680px; margin: 0 auto; position: relative; padding-left: 26px; }
 .tl::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 1px; background: linear-gradient(180deg, rgba(56, 189, 248, 0.35), var(--hairline)); }
@@ -2345,6 +2408,128 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   white-space: nowrap;
 }
 .cf-size { font-family: var(--font-mono); font-size: 9px; color: var(--white-faint); }
+
+/* ---- 私信 · 撤回占位 ---- */
+.chat-recalled {
+  color: var(--white-faint);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  font-style: italic;
+  padding: 4px 0;
+  border-top: 1px dashed var(--hairline);
+  border-bottom: 1px dashed var(--hairline);
+}
+.chat-row.recalled .chat-bubble { opacity: 0.62; background: rgba(13, 20, 42, 0.35); }
+
+/* ---- 私信 · 引用回复块 ---- */
+.chat-quote {
+  position: relative;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--cyan);
+  background: rgba(56, 189, 248, 0.06);
+  border-radius: 4px 8px 8px 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.chat-quote:hover { background: rgba(56, 189, 248, 0.12); }
+.cq-nick { font-size: 10px; letter-spacing: 0.14em; color: var(--cyan); }
+.cq-preview { font-size: 12px; color: var(--white-dim); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- 私信 · 气泡内操作 ---- */
+.chat-bubble { position: relative; }
+.chat-ops {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+}
+.chat-op {
+  background: none;
+  border: none;
+  color: var(--white-mute);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+.chat-op:hover { color: var(--cyan); background: rgba(56,189,248,0.1); }
+.chat-op.danger:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+.chat-row.mine .chat-ops { justify-content: flex-end; }
+
+/* ---- 私信 · 表情回应 chip ---- */
+.chat-reacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.chat-react {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: rgba(129,140,248,0.12);
+  border: 1px solid rgba(129,140,248,0.25);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  user-select: none;
+}
+.chat-react:hover { transform: scale(1.05); }
+.chat-react.mine { background: rgba(56,189,248,0.14); border-color: rgba(56,189,248,0.3); }
+.chat-react small { font-size: 9px; color: var(--white-faint); margin-left: 2px; }
+
+/* ---- 私信 · 表情弹出面板 ---- */
+.chat-react-pop {
+  position: absolute;
+  z-index: 9999;
+  background: rgba(15,22,38,0.96);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  gap: 4px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+}
+.crp-btn {
+  width: 34px; height: 34px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.crp-btn:hover { background: rgba(129,140,248,0.18); transform: scale(1.15); }
+
+/* ---- 私信 · 回复中指示条 ---- */
+.chat-reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(56,189,248,0.08);
+  border-top: 1px solid rgba(56,189,248,0.2);
+  border-bottom: 1px solid rgba(56,189,248,0.1);
+  font-size: 11.5px;
+  color: var(--white-dim);
+}
+.crb-label { letter-spacing: 0.08em; }
+.crb-label b { color: var(--cyan); }
+.crb-preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--white-mute); }
+.crb-close {
+  background: none;
+  border: none;
+  color: var(--white-mute);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.crb-close:hover { color: #ef4444; }
 
 .chat-bar {
   position: sticky;
@@ -3122,6 +3307,8 @@ html[data-theme="light"] .pc-btn:hover { color: #0e7490; border-color: rgba(14, 
   .pr-card { padding: 16px; }
   .pr-q { font-size: 16px; }
   .pr-hero h2 { font-size: 19px; }
+  .yp-grid { grid-template-columns: repeat(2, 1fr); }
+  .yp-cell.wide { grid-column: span 2; }
 }
 
 /* ============================================================
