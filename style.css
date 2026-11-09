@@ -2019,7 +2019,7 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
     opacity: 0.55;
   }
   .hero-content { align-items: flex-start; padding-top: 38vh; }
-  .hero-text { padding-left: 26px; }
+  .hero-text { padding-left: 26px; min-width: 0; }
   .hero-meta { display: none; }
   .scroll-hint { display: none; }
 
@@ -2051,14 +2051,30 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 
 @media (max-width: 640px) {
+  .boot { min-width: 0; width: min(86vw, 320px); }
+  .boot-row { gap: 8px; font-size: 10px; letter-spacing: 0.06em; }
+  .boot-k { width: 76px; }
+  .boot-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .boot-bar { width: 100%; }
+
+  .hero-text { width: 100%; min-width: 0; }
   .hero-title { font-size: clamp(34px, 11vw, 52px); letter-spacing: 0.02em; }
-  .hero-quote { letter-spacing: 0.1em; margin-bottom: 34px; }
+  .hero-quote {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    line-height: 1.95;
+    margin-bottom: 34px;
+    word-break: break-word;
+  }
   .hud-panel { width: 100%; padding: 18px 16px 14px; }
   .hud-top { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .hud-unit { min-width: 0; flex: 1; }
+  .hud-counter { flex-wrap: wrap; gap: 0; row-gap: 16px; }
+  .hud-unit { min-width: 0; flex: 0 0 33.333%; }
   .hud-sep { display: none; }
-  .hud-counter { gap: 2px; }
+  .hud-mod { font-size: 17px; letter-spacing: 0.05em; }
+  .hud-cap { font-size: 7px; letter-spacing: 0.08em; white-space: nowrap; }
   .hud-num { font-size: 26px; }
+  .hud-foot { flex-wrap: wrap; row-gap: 6px; }
 
   .section-title { letter-spacing: 0.16em; }
   .anniv-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2071,8 +2087,9 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   .msg-list { max-height: 250px; }
   .lb-foot { flex-direction: column; align-items: flex-start; gap: 6px; }
 
-  .bottom-nav { bottom: 14px; padding: 5px; max-width: calc(100vw - 16px); overflow-x: auto; }
-  .nav-link { padding: 9px 9px; }
+  .bottom-nav { bottom: 14px; padding: 4px; max-width: calc(100vw - 12px); gap: 0; overflow-x: auto; }
+  .nav-link { padding: 7px 7px; gap: 4px; font-size: 9px; letter-spacing: 0.06em; }
+  .nav-icon { font-size: 11px; }
 }
 
 @media (max-height: 780px) and (min-width: 901px) {
