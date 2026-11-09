@@ -2303,10 +2303,22 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .tab-dot[hidden] { display: none; }
 
-.chat-wrap { display: flex; flex-direction: column; }
+/* 私信页：外壳固定为可视高度，主区域 flex 撑满，输入栏永远贴底，底部不留空白 */
+.app-overlay:has(.chat-wrap) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-overlay:has(.chat-wrap) .app-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+.chat-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .chat-head, .chat-bar, .chat-reply-bar, .rec-hint { flex-shrink: 0; }
-/* 私信页贴满可视高度，底部不留空白 */
-.app-main:has(.chat-wrap) { padding-bottom: 2px; }
+.app-overlay:has(.chat-wrap) .chat-list { min-height: 0; }
 .chat-head {
   display: flex;
   align-items: center;
