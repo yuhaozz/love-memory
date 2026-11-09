@@ -2306,7 +2306,7 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 .chat-wrap { display: flex; flex-direction: column; }
 .chat-head, .chat-bar, .chat-reply-bar, .rec-hint { flex-shrink: 0; }
 /* 私信页贴满可视高度，底部不留空白 */
-.app-main:has(.chat-wrap) { padding-bottom: 10px; }
+.app-main:has(.chat-wrap) { padding-bottom: 2px; }
 .chat-head {
   display: flex;
   align-items: center;
@@ -2332,12 +2332,14 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   height: auto;
   min-height: 180px;
   overflow-y: auto;
-  padding: 6px 4px 18px;
-  scroll-padding-bottom: 18px;
+  padding: 6px 4px 8px;
+  scroll-padding-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
+/* 消息少时靠下排列，空白留在上方，避免输入框上方出现大片空白 */
+.chat-list > :first-child { margin-top: auto; }
 .chat-empty {
   margin: auto;
   color: var(--white-mute);

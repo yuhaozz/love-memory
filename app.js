@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109y';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109z';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2813,7 +2813,7 @@
     const vh = vv ? vv.height : window.innerHeight;
     const offset = vv ? vv.offsetTop : 0;
     const top = wrap.getBoundingClientRect().top - offset;
-    wrap.style.height = Math.max(320, Math.round(vh - top - 10)) + 'px';
+    wrap.style.height = Math.max(320, Math.round(vh - top - 2)) + 'px';
   }
 
   /* 私信滚动到底：发出消息、键盘弹起、窗口变矮时都要保证看到最新一条 */
