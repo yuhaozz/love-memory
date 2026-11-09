@@ -1987,6 +1987,87 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .viewer-close:hover { color: #fff; }
 
+/* ---- 首页三章 ---- */
+.hero-chapters { width: 100%; }
+.chapter-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+}
+.chapter { min-width: 0; }
+.chapter-head { display: flex; align-items: baseline; gap: 8px; }
+.chapter-no {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--cyan);
+  opacity: 0.72;
+}
+.chapter-name {
+  font-size: 17px;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  color: var(--white);
+}
+.chapter-en {
+  margin: 4px 0 10px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--white-faint);
+}
+.chapter-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.95;
+  letter-spacing: 0.04em;
+  color: var(--white-dim);
+}
+
+/* ---- 私信与通话 ---- */
+.together-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--hairline-soft);
+  border: 1px solid var(--hairline-soft);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.together-card {
+  padding: 28px 26px 26px;
+  background: linear-gradient(165deg, rgba(8, 14, 30, 0.72), rgba(4, 7, 16, 0.86));
+  transition: background 0.5s ease;
+}
+.together-card:hover {
+  background: linear-gradient(165deg, rgba(14, 26, 50, 0.82), rgba(6, 10, 22, 0.9));
+}
+.tg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--white-faint);
+}
+.tg-no { color: var(--cyan); opacity: 0.75; }
+.together-card h3 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: var(--white);
+}
+.together-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.95;
+  letter-spacing: 0.04em;
+  color: var(--white-dim);
+}
+
 /* ============================================================
    响应式
    ============================================================ */
@@ -2058,16 +2139,20 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   .boot-bar { width: 100%; }
 
   .hero-text { width: 100%; min-width: 0; }
+  .hero-content { padding-top: 30vh; }
   .hero-title { font-size: clamp(34px, 11vw, 52px); letter-spacing: 0.02em; }
   .hero-quote {
     font-size: 13px;
     letter-spacing: 0.08em;
     line-height: 1.95;
-    margin-bottom: 34px;
+    margin-bottom: 26px;
     word-break: break-word;
   }
-  .hud-panel { width: 100%; padding: 18px 16px 14px; }
-  .hud-top { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .hud-panel { width: 100%; padding: 16px 16px 14px; }
+  .hud-top { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .hud-foot { display: none; }
+  .hero-cta { order: 1; margin-top: 0; margin-bottom: 26px; }
+  .hero-chapters { order: 2; }
   .hud-counter { flex-wrap: wrap; gap: 0; row-gap: 16px; }
   .hud-unit { min-width: 0; flex: 0 0 33.333%; }
   .hud-sep { display: none; }
@@ -2075,6 +2160,16 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   .hud-cap { font-size: 7px; letter-spacing: 0.08em; white-space: nowrap; }
   .hud-num { font-size: 26px; }
   .hud-foot { flex-wrap: wrap; row-gap: 6px; }
+
+  .chapter-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .chapter-name { font-size: 15px; letter-spacing: 0.12em; }
+  .chapter-en { margin: 3px 0 0; font-size: 7px; letter-spacing: 0.12em; }
+  .chapter-desc { display: none; }
+
+  .together-grid { grid-template-columns: 1fr; }
+  .together-card { padding: 22px 20px 20px; }
+  .tg-top { margin-bottom: 16px; }
+  .together-card h3 { font-size: 18px; }
 
   .section-title { letter-spacing: 0.16em; }
   .anniv-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2090,6 +2185,12 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
   .bottom-nav { bottom: 14px; padding: 4px; max-width: calc(100vw - 12px); gap: 0; overflow-x: auto; }
   .nav-link { padding: 7px 7px; gap: 4px; font-size: 9px; letter-spacing: 0.06em; }
   .nav-icon { font-size: 11px; }
+}
+
+@media (max-width: 400px) {
+  .hero-content { padding-top: 25vh; }
+  .hero-quote { margin-bottom: 18px; }
+  .hero-cta { margin-bottom: 18px; }
 }
 
 @media (max-height: 780px) and (min-width: 901px) {
