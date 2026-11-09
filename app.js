@@ -887,6 +887,7 @@
     if (callState !== 'idle') endCall();
     if (rec.recorder && rec.recorder.state !== 'inactive') stopRecord(true);
   }
+  $('btnWrite').addEventListener('click', () => { openEditor(null); });
   $('btnExit').addEventListener('click', closeApp);
   $('btnLogout').addEventListener('click', () => {
     localStorage.removeItem(LS.session);
