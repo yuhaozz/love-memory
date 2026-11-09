@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="银河之约" />
-<link rel="stylesheet" href="style.css?v=20261109q" />
+<link rel="stylesheet" href="style.css?v=20261109r" />
 </head>
 <body>
 
@@ -619,9 +619,15 @@
   <div class="share-inner" id="shareBody"></div>
 </div>
 
-<!-- Supabase SDK（仅云端同步模式需要；未配置时加载失败也不影响本地模式） -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Supabase SDK：优先使用站内自带的 vendor 副本（不依赖外网 CDN，国内网络可用）；
+     本地文件异常时再退回 CDN。未配置云端时加载失败也不影响本地模式。 -->
+<script src="vendor/supabase.min.js?v=2.119.0"></script>
+<script>
+  if (typeof window.supabase === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
+  }
+</script>
 <script src="script.js?v=20261107i"></script>
-<script src="app.js?v=20261109q"></script>
+<script src="app.js?v=20261109r"></script>
 </body>
 </html>
