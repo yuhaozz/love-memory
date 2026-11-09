@@ -122,12 +122,11 @@
     if (t === todayKey(y)) return '昨天 ' + hm;
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
   }
-  function compressImage(file) {
+  function compressImageMax(file, max) {
     return new Promise((res, rej) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
       img.onload = () => {
-        const max = 1280;
         const s = Math.min(1, max / Math.max(img.width, img.height));
         const w = Math.max(1, Math.round(img.width * s));
         const h = Math.max(1, Math.round(img.height * s));
@@ -141,6 +140,7 @@
       img.src = url;
     });
   }
+  function compressImage(file) { return compressImageMax(file, 1280); }
   function newEntryId() {
     return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
@@ -189,6 +189,20 @@
   function monthLabel(ym) {
     const [y, m] = ym.split('-');
     return `${y} · ${m} 月`;
+  }
+
+  /* ---- 头像：有自定义头像用图片，否则用昵称首字 ---- */
+  function avatarHtml(u, cls) {
+    const c = cls || 'ec-avatar';
+    if (u && u.avatar) return `<span class="${c} av"><img src="${safeUrl(u.avatar)}" alt="" loading="lazy" /></span>`;
+    return `<span class="${c}">${esc(((u && u.nick) || '?').slice(0, 1))}</span>`;
+  }
+  function pickImage(accept, cb) {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = accept || 'image/*';
+    inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) cb(f); };
+    inp.click();
   }
 
   /* ---- 纪念日日历 .ics：每一年重复，UID 稳定，导入一次就能长期用 ---- */
@@ -299,6 +313,7 @@
     return r && {
       u: r.username, pw: r.pw, nick: r.nick,
       sign: r.sign || '', bday: r.bday || '',
+      avatar: r.avatar || '', deco: r.deco || {},
       couple: r.couple || null, createdAt: r.created_at || 0,
     };
   }
@@ -364,6 +379,14 @@
     },
     async saveCouple(c) {
       ck(await sb.from('lm_couples').update({ since: c.since, members: c.members }).eq('code', c.code));
+    },
+    // ---- 个人资料：昵称 / 头像 / 装饰（背景板·个性签名）。走数据库函数，令牌校验，只改自己的行 ----
+    async updateProfile(o) {
+      const data = ck(await sb.rpc('lm_update_profile', {
+        p_user: o.u, p_nick: o.nick, p_avatar: o.avatar || '', p_deco: o.deco || {},
+      }));
+      if (data && data.error) throw new Error(data.error);
+      return true;
     },
     async destroyCouple(c) {
       ck(await sb.from('lm_couples').delete().eq('code', c.code));
@@ -823,7 +846,7 @@
     } else {
       $('appDays').textContent = '';
     }
-    $('appMe').textContent = me.nick;
+    $('appMe').innerHTML = (me.avatar ? `<img class="top-av" src="${safeUrl(me.avatar)}" alt="" />` : '') + esc(me.nick);
   }
 
   /* ---------------- 配对（无空间时） ---------------- */
@@ -935,6 +958,7 @@
     else if (curTab === 'diary') renderDiary(main);
     else if (curTab === 'photos') renderPhotos(main);
     else if (curTab === 'timeline') renderTimeline(main);
+    else if (curTab === 'home') renderHome(main, me.u, false);
     else renderUs(main);
     main.scrollTop = 0;
   }
@@ -948,7 +972,7 @@
     return `
       <article class="entry-card${mine ? ' mine' : ''}">
         <header class="ec-head">
-          <span class="ec-avatar">${esc((u ? u.nick : e.author).slice(0, 1))}</span>
+          ${avatarHtml(u || { nick: e.author })}
           <span class="ec-nick">${esc(u ? u.nick : e.author)}</span>
           ${e.mood ? `<span class="ec-mood">${esc(e.mood)}</span>` : ''}
           <span class="ec-time">${fmtTs(e.ts)}</span>
@@ -977,7 +1001,7 @@
     const col = (user, entry, isMe) => `
       <section class="today-col${isMe ? ' me' : ''}">
         <div class="today-col-head">
-          <span class="ec-avatar">${esc((user ? user.nick : '?').slice(0, 1))}</span>
+          ${avatarHtml(user)}
           <span class="today-col-name">${esc(user ? user.nick : '等待TA加入')}</span>
           ${user && user.sign ? `<span class="today-col-sign">${esc(user.sign)}</span>` : ''}
         </div>
@@ -1094,8 +1118,8 @@
     while (days.has(todayKey(d))) { streak++; d.setDate(d.getDate() - 1); }
 
     const profile = (u, isMe) => `
-      <div class="profile-card">
-        <div class="pc-avatar">${esc(u.nick.slice(0, 1))}</div>
+      <div class="profile-card clickable" data-home="${esc(u.u)}" title="点击进入${isMe ? '我的' : 'TA的'}主页">
+        <div class="pc-avatar">${u.avatar ? `<img src="${safeUrl(u.avatar)}" alt="" />` : esc(u.nick.slice(0, 1))}</div>
         <div class="pc-name">${esc(u.nick)}${isMe ? ' <span class="pc-me">我</span>' : ''}</div>
         <div class="pc-meta">
           <span>${esc(u.sign || '—')}</span>
@@ -1167,6 +1191,13 @@
       applyTheme(b.dataset.skin);
       document.querySelectorAll('.skin-chip').forEach((x) => x.classList.toggle('on', x === b));
     });
+    main.querySelectorAll('.profile-card[data-home]').forEach((card) => {
+      card.addEventListener('click', () => {
+        const name = card.getAttribute('data-home');
+        if (name === me.u) switchAppTab('home');
+        else openHomeOverlay(name);
+      });
+    });
 
     $('usYearbook').addEventListener('click', () => showYearbook(true));
     $('usGuide').addEventListener('click', () => showOnboard(true));
@@ -1220,6 +1251,176 @@
       renderPairScreen();
     });
   }
+
+  /* ---------------- 个人主页（头像 / 昵称 / 个性签名 / 背景板） ---------------- */
+  const HP_BGS = [
+    { k: 'deep',   n: '深空', css: 'radial-gradient(ellipse 90% 90% at 70% 10%, #14264f 0%, #070d20 55%, #03050e 100%)' },
+    { k: 'nebula', n: '星云', css: 'radial-gradient(ellipse 90% 90% at 30% 10%, #452a75 0%, #180d31 55%, #07040f 100%)' },
+    { k: 'warm',   n: '胶片', css: 'radial-gradient(ellipse 90% 90% at 70% 10%, #7a5230 0%, #2e1c11 55%, #120906 100%)' },
+    { k: 'mist',   n: '雾粉', css: 'radial-gradient(ellipse 90% 90% at 30% 15%, #8a5568 0%, #37222e 55%, #140b11 100%)' },
+    { k: 'aurora', n: '极光', css: 'radial-gradient(ellipse 90% 90% at 70% 5%, #176055 0%, #0a2a2e 55%, #04100e 100%)' },
+    { k: 'gold',   n: '墨金', css: 'radial-gradient(ellipse 90% 90% at 60% 10%, #7a6423 0%, #2e260d 55%, #100d04 100%)' },
+  ];
+  function hpBgStyle(u) {
+    const bg = (u.deco && u.deco.bg) || null;
+    if (bg && bg.t === 'img' && bg.url) {
+      const url = safeUrl(bg.url);
+      if (url) return `background-image:url("${url}");background-size:cover;background-position:center;`;
+    }
+    const p = HP_BGS.find((x) => bg && bg.t === 'preset' && x.k === bg.k) || HP_BGS[0];
+    return `background:${p.css};`;
+  }
+  async function saveProfile(patch) {
+    const next = Object.assign({}, me, patch);
+    if (cloudOn()) {
+      await C.updateProfile({ u: me.u, nick: next.nick, avatar: next.avatar || '', deco: next.deco || {} });
+      me = next;
+      cacheUsers[me.u] = next;
+      syncState('云端已同步');
+    } else {
+      const users = loadUsers();
+      users[me.u] = Object.assign({}, users[me.u], patch);
+      saveUsers(users);
+      me = users[me.u];
+    }
+    renderTop();
+  }
+  function profileFailHint(e) {
+    const s = String((e && e.message) || e || '');
+    if (/lm_update_profile|avatar|deco|schema cache|could not find|function/i.test(s)) {
+      alert('保存失败：云端还没有个人资料新字段。\n请在 Supabase SQL Editor 执行「说明.md · 5.6 个人主页」一节的 SQL 后再试。');
+    } else {
+      alert('保存失败：' + (s || '网络错误'));
+    }
+  }
+  function renderHome(main, username, readonly) {
+    const users = userMap();
+    const u = users[username] || me;
+    const own = !readonly && u.u === me.u;
+    const list = entries().filter((e) => e.author === u.u).sort((a, b) => b.ts - a.ts);
+    const photoCount = list.reduce((n, e) => n + (e.photos || []).length, 0);
+    const dayCount = new Set(list.map((e) => e.date)).size;
+    const lastMood = ((list.find((e) => e.mood) || {}).mood) || '—';
+    const motto = (u.deco && u.deco.motto) || '';
+    const bg = (u.deco && u.deco.bg) || null;
+    const curKey = bg ? (bg.t === 'img' ? '__img' : bg.k) : 'deep';
+    const recent = list.slice(0, 5);
+
+    main.innerHTML = `
+      <div class="hp">
+        <div class="hp-bg" style="${hpBgStyle(u)}">
+          ${own ? '<button type="button" class="hp-bg-btn" id="hpBgBtn">✦ 装饰背景</button>' : ''}
+        </div>
+        <div class="hp-id">
+          <div class="hp-avatar${own ? ' editable' : ''}" id="hpAvatar"${own ? ' title="点击换头像"' : ''}>${
+            u.avatar ? `<img src="${safeUrl(u.avatar)}" alt="" />` : `<span class="hp-letter">${esc(u.nick.slice(0, 1))}</span>`
+          }</div>
+          <div class="hp-nick">${esc(u.nick)}</div>
+          <div class="hp-motto">${motto ? '「' + esc(motto) + '」' : (own ? '写一句个性签名，让TA看到此刻的你' : 'TA还没有留下签名')}</div>
+          <div class="hp-meta">${esc(u.sign || '')}${u.bday ? ` · 生日 ${esc(u.bday.slice(5).replace('-', '.'))}` : ''}</div>
+          ${own ? '<button type="button" class="btn-ghost hp-edit-btn" id="hpEdit">编辑资料</button>' : ''}
+        </div>
+        <div class="hp-cards">
+          <div class="hp-stat"><b>${list.length}</b><span>篇日记</span></div>
+          <div class="hp-stat"><b>${photoCount}</b><span>张照片</span></div>
+          <div class="hp-stat"><b>${dayCount}</b><span>天记录</span></div>
+          <div class="hp-stat"><b>${esc(lastMood)}</b><span>最近心情</span></div>
+        </div>
+        ${own ? `
+        <div class="hp-panel" id="hpDeco" hidden>
+          <div class="hp-panel-t">选择背景板</div>
+          <div class="hp-sw-grid">
+            ${HP_BGS.map((p) => `<button type="button" class="hp-sw${curKey === p.k ? ' on' : ''}" data-bg="${p.k}" style="background:${p.css}"><span>${p.n}</span></button>`).join('')}
+            ${bg && bg.t === 'img' ? `<button type="button" class="hp-sw on" data-bg="__img" style="background-image:url('${safeUrl(bg.url)}');background-size:cover;background-position:center"><span>自定义</span></button>` : ''}
+          </div>
+          <div class="hp-deco-row">
+            <button type="button" class="btn-ghost" id="hpBgUp">上传图片作背景</button>
+            ${bg ? '<button type="button" class="btn-ghost" id="hpBgReset">恢复默认背景</button>' : ''}
+          </div>
+          <p class="hp-hint">背景板保存在云端，TA打开你的主页也能看到。自定义图片建议横向、不超过 5MB。</p>
+        </div>` : ''}
+        <div class="hp-recent">
+          <div class="hp-recent-t">${own ? '我的最近记录' : 'TA的最近记录'}</div>
+          ${recent.length ? recent.map((e) => `
+            <div class="hp-re-item">
+              <span class="hp-re-date">${esc(e.date.slice(5).replace('-', '.'))}</span>
+              ${e.mood ? `<span class="hp-re-mood">${esc(e.mood)}</span>` : ''}
+              <span class="hp-re-text">${esc(e.title || (e.text || '').slice(0, 30) || '（照片记录）')}</span>
+              ${(e.photos || []).length ? `<span class="hp-re-ph">图×${e.photos.length}</span>` : ''}
+            </div>`).join('')
+          : '<p class="hp-empty">还没有记录，去写第一篇吧。</p>'}
+        </div>
+      </div>`;
+
+    if (!own) return;
+
+    $('hpEdit').addEventListener('click', () => {
+      $('pmNick').value = me.nick;
+      $('pmMotto').value = (me.deco && me.deco.motto) || '';
+      $('profileModal').hidden = false;
+    });
+    $('hpBgBtn').addEventListener('click', () => {
+      const p = $('hpDeco');
+      p.hidden = !p.hidden;
+    });
+    $('hpAvatar').addEventListener('click', () => {
+      pickImage('image/*', async (f) => {
+        if (!f.type.startsWith('image/')) { alert('请选择图片文件'); return; }
+        if (f.size > 20 * 1024 * 1024) { alert('头像图片请小于 20MB'); return; }
+        try {
+          const dataUrl = await compressImageMax(f, 512);
+          const avatar = cloudOn() ? await C.uploadPhoto(dataUrl, `avatar-${me.u}-${Date.now()}.jpg`) : dataUrl;
+          await saveProfile({ avatar });
+          renderMain();
+        } catch (e2) { profileFailHint(e2); }
+      });
+    });
+    $('hpDeco').querySelectorAll('.hp-sw').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const k = b.getAttribute('data-bg');
+        if (k === '__img') return;
+        try {
+          await saveProfile({ deco: Object.assign({}, me.deco, { bg: { t: 'preset', k } }) });
+          renderMain();
+        } catch (e2) { profileFailHint(e2); }
+      });
+    });
+    const bgUp = $('hpBgUp');
+    if (bgUp) bgUp.addEventListener('click', () => {
+      pickImage('image/*', async (f) => {
+        if (!f.type.startsWith('image/')) { alert('请选择图片文件'); return; }
+        if (f.size > 5 * 1024 * 1024) { alert('背景图片请小于 5MB'); return; }
+        try {
+          const dataUrl = await compressImageMax(f, 1600);
+          const url = cloudOn() ? await C.uploadPhoto(dataUrl, `bg-${me.u}-${Date.now()}.jpg`) : dataUrl;
+          await saveProfile({ deco: Object.assign({}, me.deco, { bg: { t: 'img', url } }) });
+          renderMain();
+        } catch (e2) { profileFailHint(e2); }
+      });
+    });
+    const bgReset = $('hpBgReset');
+    if (bgReset) bgReset.addEventListener('click', async () => {
+      try {
+        await saveProfile({ deco: Object.assign({}, me.deco, { bg: null }) });
+        renderMain();
+      } catch (e2) { profileFailHint(e2); }
+    });
+  }
+  function openHomeOverlay(username) {
+    $('homeOverlay').hidden = false;
+    renderHome($('homeBody'), username, true);
+  }
+  $('homeClose').addEventListener('click', () => { $('homeOverlay').hidden = true; });
+  $('pmCancel').addEventListener('click', () => { $('profileModal').hidden = true; });
+  $('pmSave').addEventListener('click', async () => {
+    const nick = $('pmNick').value.trim().slice(0, 24) || me.nick;
+    const motto = $('pmMotto').value.trim().slice(0, 40);
+    try {
+      await saveProfile({ nick, deco: Object.assign({}, me.deco, { motto }) });
+      $('profileModal').hidden = true;
+      renderMain();
+    } catch (e2) { profileFailHint(e2); }
+  });
 
   /* ---- 回忆年鉴：1080 × 1350 的图片，可保存分享 ---- */
   function yearbookData() {
@@ -2182,9 +2383,9 @@
     const users = loadUsers();
     const couples = loadCouples();
     const code = 'LOVE66';
-    const mk = (u, nick, sign) => ({ u, nick, pw: hash('123456'), sign, bday: '', couple: code, createdAt: Date.now() });
-    users.demoA = mk('demoA', '小满', '双子座');
-    users.demoB = mk('demoB', '阿澈', '天蝎座');
+    const mk = (u, nick, sign, motto) => ({ u, nick, pw: hash('123456'), sign, bday: '', couple: code, createdAt: Date.now(), avatar: '', deco: motto ? { motto } : {} });
+    users.demoA = mk('demoA', '小满', '双子座', '愿每次抬头，都能看见你');
+    users.demoB = mk('demoB', '阿澈', '天蝎座', '星光落在眼里，你落在我心里');
     couples[code] = { code, created: Date.now() - 1180 * 86400000, since: '2023-08-14', members: ['demoA', 'demoB'] };
     const d = (offset) => { const x = new Date(); x.setDate(x.getDate() - offset); return todayKey(x); };
     const T = Date.now();
