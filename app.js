@@ -28,6 +28,7 @@
     users: 'ot_users',
     couples: 'ot_couples',
     session: 'ot_session',
+    token: 'ot_couple_token',
     entries: (code) => 'ot_entries_' + code,
   };
   const MOODS = ['晴朗', '微风', '多云', '小雨', '开心', '想念', '平静', '激动', '疲惫', '治愈'];
@@ -131,10 +132,21 @@
      照片存 Storage 公共桶 photos。
      ============================================================ */
   let sb = null;
+  let sbToken = null;
+  function setToken(t) {
+    store.write(LS.token, t || '');
+    sbToken = null;   // 强制重建客户端，让新令牌带上
+    cloudInit();
+  }
   function cloudInit() {
     if (!cloudOn()) return false;
     try {
-      sb = window.supabase.createClient(CLOUD.supabaseUrl, CLOUD.supabaseKey);
+      const tok = store.read(LS.token, '') || '';
+      if (sb && sbToken === tok) return true;
+      sbToken = tok;
+      sb = window.supabase.createClient(CLOUD.supabaseUrl, CLOUD.supabaseKey, {
+        global: { headers: tok ? { 'x-couple-token': tok } : {} },
+      });
       return true;
     } catch (e) {
       console.warn('云端初始化失败，退回本地模式', e);
@@ -169,38 +181,26 @@
   }
 
   const C = {
-    // ---- 查询 ----
-    async fetchUser(u) {
-      const r = ck(await sb.from('lm_users').select('*').eq('username', u).maybeSingle());
-      return rowToUser(r);
+    // ---- 注册 / 登录：走云端函数，密码由服务端校验，客户端拿不到别人的密码 ----
+    async login(u, plain, weak) {
+      const data = ck(await sb.rpc('lm_login', { p_user: u, p_pass: plain, p_weak: weak }));
+      if (!data || data.error) return null;
+      setToken(data.token);
+      return { u: u.trim().toLowerCase(), code: data.code, token: data.token };
     },
-    async fetchCouple(code) {
-      const r = ck(await sb.from('lm_couples').select('*').eq('code', code).maybeSingle());
-      return rowToCouple(r);
+    async register(o) {
+      const data = ck(await sb.rpc('lm_register', {
+        p_user: o.u, p_pass: o.p, p_nick: o.nick,
+        p_sign: o.sign, p_bday: o.bday, p_join: o.join || '',
+      }));
+      if (data && data.error) return data;
+      setToken(data.token);
+      return { u: o.u.trim().toLowerCase(), code: data.code, token: data.token };
     },
+    // ---- 查询：请求头带令牌，库里只会返回你们这一对的数据 ----
     async fetchEntries(code) {
       const r = ck(await sb.from('lm_entries').select('*').eq('couple', code).order('ts', { ascending: false }).limit(1000));
       return (r || []).map(rowToEntry);
-    },
-    async coupleExists(code) {
-      const res = await sb.from('lm_couples').select('code', { count: 'exact', head: true }).eq('code', code);
-      if (res.error) throw new Error(res.error.message);
-      return (res.count || 0) > 0;
-    },
-    // ---- 写入 ----
-    async createUser(user) {
-      ck(await sb.from('lm_users').insert({
-        username: user.u, pw: user.pw, nick: user.nick,
-        sign: user.sign, bday: user.bday, couple: user.couple, created_at: user.createdAt,
-      }));
-      return user.u;
-    },
-    async updateUserCouple(user, code) {
-      ck(await sb.from('lm_users').update({ couple: code }).eq('username', user.u));
-    },
-    async createCouple(c) {
-      ck(await sb.from('lm_couples').insert({ code: c.code, since: c.since, created: c.created, members: c.members }));
-      return c.code;
     },
     async saveCouple(c) {
       ck(await sb.from('lm_couples').update({ since: c.since, members: c.members }).eq('code', c.code));
@@ -208,9 +208,28 @@
     async destroyCouple(c) {
       ck(await sb.from('lm_couples').delete().eq('code', c.code));
     },
+    // ---- 空间：创建 / 加入 / 解除（身份由请求头令牌确定）----
+    async createSpace(since) {
+      const data = ck(await sb.rpc('lm_create_space', { p_since: since }));
+      if (data && data.error) return data;
+      setToken(data.token);
+      return { code: data.code, couple: rowToCouple(data.couple) };
+    },
+    async joinSpace(code) {
+      const data = ck(await sb.rpc('lm_join_space', { p_code: code }));
+      if (data && data.error) return data;
+      setToken(data.token);
+      return data;
+    },
+    async leaveSpace() {
+      const data = ck(await sb.rpc('lm_leave_space', {}));
+      setToken(data.token);
+      return data;
+    },
     async saveEntry(e, code) {
       ck(await sb.from('lm_entries').upsert({
-        eid: e.id, couple: code, author: e.author, date: e.date,
+        eid: e.id, couple: code, couple_token: store.read(LS.token, ''),
+        author: e.author, date: e.date,
         mood: e.mood || '', title: e.title || '', text: e.text || '',
         photos: e.photos || [], ts: e.ts,
       }, { onConflict: 'eid' }));
@@ -228,29 +247,29 @@
     // ---- 组合：把「我 + 空间 + 成员 + 记录」全部拉进缓存 ----
     async pullAll() {
       if (!me) return;
-      const [freshMe, freshCouple] = await Promise.all([
-        C.fetchUser(me.u),
-        me.couple ? C.fetchCouple(me.couple) : Promise.resolve(null),
-      ]);
-      if (!freshMe) { // 账号在云端被删了
+      const myRow = ck(await sb.from('lm_users').select('*').eq('username', me.u).maybeSingle());
+      if (!myRow) { // 账号在云端被删了
         localStorage.removeItem(LS.session);
+        setToken('');
         location.reload();
         return;
       }
-      me = freshMe;
-      couple = me.couple ? freshCouple : null;
-      const users = {};
-      users[me.u] = me;
-      if (couple) {
-        const others = couple.members.filter((m) => m !== me.u);
-        for (const m of others) {
-          const u = await C.fetchUser(m);
-          if (u) users[m] = u;
+      me = rowToUser(myRow);
+      const users = { [me.u]: me };
+      couple = null;
+      cacheCouples = {};
+      if (me.couple) {
+        const c = ck(await sb.from('lm_couples').select('*').eq('code', me.couple).maybeSingle());
+        couple = rowToCouple(c);
+        if (couple) {
+          const members = ck(await sb.from('lm_users').select('*').eq('couple', me.couple));
+          for (const r of (members || [])) {
+            const u = rowToUser(r);
+            if (u) users[u.u] = u;
+          }
+          cacheEntries[couple.code] = await C.fetchEntries(couple.code);
+          cacheCouples = { [couple.code]: couple };
         }
-        cacheEntries[couple.code] = await C.fetchEntries(couple.code);
-        cacheCouples = { [couple.code]: couple };
-      } else {
-        cacheCouples = {};
       }
       cacheUsers = users;
     },
@@ -359,10 +378,10 @@
     if (cloudOn()) {
       err.textContent = '连接云端…';
       try {
-        const user = await C.fetchUser(u);
-        if (!user || user.pw !== hash(p)) { err.textContent = '用户名或密码不正确'; return; }
+        const r = await C.login(u, p, hash(p));
+        if (!r) { err.textContent = '用户名或密码不正确'; return; }
         err.textContent = '';
-        store.write(LS.session, u);
+        store.write(LS.session, r.u);
         closeAuth();
         await enterApp();
       } catch {
@@ -441,26 +460,15 @@
     if (cloudOn()) {
       err.textContent = '连接云端…';
       try {
-        if (await C.fetchUser(u)) { err.textContent = '用户名已被使用'; return; }
-        let code = null;
-        if (pairMode === 'join') {
-          const c = await C.fetchCouple(joinCode);
-          if (!c) { err.textContent = '配对码不存在，请和TA确认'; return; }
-          if (c.members.length >= 2) { err.textContent = '这个空间已经有两个人啦'; return; }
-          code = joinCode;
-          c.members.push(u);
-          await C.saveCouple(c);
-        } else {
-          do { code = randCode(); } while (await C.coupleExists(code));
-          await C.createCouple({ code, created: Date.now(), since: todayKey(), members: [u] });
-        }
-        await C.createUser({
-          u, nick, pw: hash(p1),
-          sign: $('regSign').value, bday: bdayVal(),
-          couple: code, createdAt: Date.now(),
+        const r = await C.register({
+          u, p: p1, nick, sign: $('regSign').value, bday: bdayVal(), join: joinCode,
         });
+        if (r && r.error === 'exists') { err.textContent = '用户名已被使用'; return; }
+        if (r && r.error === 'no_couple') { err.textContent = '配对码不存在，请和TA确认'; return; }
+        if (r && r.error === 'full') { err.textContent = '这个空间已经有两个人啦'; return; }
+        if (r && r.error === 'bad_user') { err.textContent = '用户名至少 2 个字符'; return; }
         err.textContent = '';
-        store.write(LS.session, u);
+        store.write(LS.session, r.u);
         closeAuth();
         await enterApp();
       } catch {
@@ -588,10 +596,10 @@
       try {
         let code, c;
         if (cloudOn()) {
-          do { code = randCode(); } while (await C.coupleExists(code));
-          c = { code, created: Date.now(), since: todayKey(), members: [me.u] };
-          c._id = await C.createCouple(c);
-          await C.updateUserCouple(me, code);
+          const r = await C.createSpace(todayKey());
+          if (r && r.error) throw new Error(r.error);
+          code = r.code;
+          c = r.couple;
           me.couple = code;
           cacheCouples = { [code]: c };
           cacheUsers[me.u] = me;
@@ -623,14 +631,9 @@
       err.textContent = '';
       try {
         if (cloudOn()) {
-          const c = await C.fetchCouple(code);
-          if (!c) { err.textContent = '配对码不存在'; return; }
-          if (c.members.length >= 2) { err.textContent = '这个空间已经有两个人啦'; return; }
-          c.members.push(me.u);
-          await C.saveCouple(c);
-          await C.updateUserCouple(me, code);
-          me.couple = code;
-          couple = c;
+          const r = await C.joinSpace(code);
+          if (r && r.error === 'no_couple') { err.textContent = '配对码不存在'; return; }
+          if (r && r.error === 'full') { err.textContent = '这个空间已经有两个人啦'; return; }
           await C.pullAll();
         } else {
           const couples = loadCouples();
@@ -887,10 +890,7 @@
       if (!confirm('解除配对后，两人都会退出这个空间（记录仍会保留）。确定吗？')) return;
       if (cloudOn()) {
         try {
-          couple.members = couple.members.filter((m) => m !== me.u);
-          if (!couple.members.length) await C.destroyCouple(couple);
-          else await C.saveCouple(couple);
-          await C.updateUserCouple(me, null);
+          await C.leaveSpace();
           me.couple = null;
           cacheUsers[me.u] = me;
         } catch { syncState('同步失败'); return; }
