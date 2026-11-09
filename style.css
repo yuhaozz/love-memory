@@ -2322,6 +2322,21 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 .chat-wrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .chat-head, .chat-bar, .chat-reply-bar, .rec-hint { flex-shrink: 0; }
 .app-overlay:has(.chat-wrap) .chat-list { min-height: 0; }
+
+/* 手机上私信页：顶栏只留切换标签，标题压成一行，把高度让给聊天 */
+@media (max-width: 900px) {
+  .app-overlay:has(.chat-wrap) .app-top { padding: 4px 10px; gap: 0; flex-wrap: nowrap; }
+  .app-overlay:has(.chat-wrap) .app-brand,
+  .app-overlay:has(.chat-wrap) .app-user { display: none; }
+  .app-overlay:has(.chat-wrap) .app-tabs { order: 0; width: 100%; margin-left: 0; }
+  .app-overlay:has(.chat-wrap) .app-tab { padding: 5px 9px; font-size: 10.5px; letter-spacing: .06em; }
+  .app-overlay:has(.chat-wrap) .app-main { padding: 6px 12px 0; }
+  .app-overlay:has(.chat-wrap) .chat-head { margin-bottom: 6px; gap: 8px; }
+  .app-overlay:has(.chat-wrap) .chat-title { font-size: 15px; letter-spacing: .1em; }
+  .app-overlay:has(.chat-wrap) .chat-sub { display: none; }
+  .app-overlay:has(.chat-wrap) .chat-call { padding: 6px 12px; font-size: 11px; }
+  .app-overlay:has(.chat-wrap) .chat-list { gap: 10px; padding: 4px 2px 6px; }
+}
 .chat-head {
   display: flex;
   align-items: center;
