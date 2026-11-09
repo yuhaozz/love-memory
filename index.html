@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>银河之约</title>
-<link rel="stylesheet" href="style.css?v=20261109d" />
+<link rel="stylesheet" href="style.css?v=20261109e" />
 </head>
 <body>
 
@@ -77,44 +77,35 @@
       <h1 class="hero-title">
         <span class="name name-brand">银河之约</span>
       </h1>
-      <p class="hero-quote">把两个人的故事，安放在星河之间。<br />星图、纪念日、照片与悄悄话——为情侣而生的私密空间。</p>
+      <p class="hero-quote">把两个人的故事，安放在星河之间。<br />有些日子值得被记住，有些话只想说给一个人听。</p>
 
-      <!-- 功能模块 -->
-      <div class="hud-panel">
+      <!-- 空间三章 -->
+      <div class="hud-panel hero-chapters">
         <div class="hud-top">
-          <span class="hud-label">ORBITAL MODULES</span>
-          <span class="hud-date">ALL SYSTEMS READY</span>
+          <span class="hud-label">THREE CHAPTERS</span>
+          <span class="hud-date">从今天，慢慢写起</span>
         </div>
-        <div class="hud-counter hud-modules">
-          <div class="hud-unit">
-            <div class="hud-num hud-mod">星图</div>
-            <div class="hud-cap">STAR CHART</div>
+        <div class="chapter-list">
+          <div class="chapter">
+            <div class="chapter-head"><span class="chapter-no">01</span><span class="chapter-name">记录</span></div>
+            <div class="chapter-en">RECORD</div>
+            <p class="chapter-desc">把普通的一天写成手记，把稍纵即逝留在光影里。</p>
           </div>
-          <div class="hud-sep">·</div>
-          <div class="hud-unit">
-            <div class="hud-num hud-mod">纪念日</div>
-            <div class="hud-cap">ANNIVERSARY</div>
+          <div class="chapter">
+            <div class="chapter-head"><span class="chapter-no">02</span><span class="chapter-name">相伴</span></div>
+            <div class="chapter-en">TOGETHER</div>
+            <p class="chapter-desc">一句私语、一通视频，隔着屏幕也像在身边。</p>
           </div>
-          <div class="hud-sep">·</div>
-          <div class="hud-unit">
-            <div class="hud-num hud-mod">日记</div>
-            <div class="hud-cap">JOURNAL</div>
-          </div>
-          <div class="hud-sep">·</div>
-          <div class="hud-unit">
-            <div class="hud-num hud-mod">相册</div>
-            <div class="hud-cap">GALLERY</div>
-          </div>
-          <div class="hud-sep">·</div>
-          <div class="hud-unit">
-            <div class="hud-num hud-mod">留言</div>
-            <div class="hud-cap">MESSAGES</div>
+          <div class="chapter">
+            <div class="chapter-head"><span class="chapter-no">03</span><span class="chapter-name">回望</span></div>
+            <div class="chapter-en">MEMORY</div>
+            <p class="chapter-desc">从今天出发，沿着足迹回到最初相遇的那天。</p>
           </div>
         </div>
         <div class="hud-foot">
-          <span>FOR EVERY COUPLE · FREE TO START</span>
+          <span>记录 · 相伴 · 回望</span>
           <span class="hud-dot"></span>
-          <span>CLOUD SYNC</span>
+          <span>更多章节，等你们一起写下</span>
         </div>
       </div>
 
@@ -123,12 +114,12 @@
           <span class="cta-txt">开启属于我们的空间</span>
           <span class="cta-arrow">→</span>
         </button>
-        <span class="cta-note">FREE · 注册即可创建你们的小宇宙</span>
+        <span class="cta-note">FREE · 一分钟，建起你们的小宇宙</span>
       </div>
 
       <a href="#coordinates" class="scroll-hint">
         <span class="scroll-line"></span>
-        <span>向下探索功能</span>
+        <span>向下，慢慢读起</span>
       </a>
     </div>
   </div>
@@ -147,7 +138,7 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">02</span><span class="sec-dim"></span><span class="sec-tag">STAR CHART</span></div>
       <h2 class="section-title">星图</h2>
-      <p class="section-desc" id="chartDesc">把两个人的星座，连成一幅只属于你们的图。注册时填写生日，系统会自动生成——下方为演示数据。</p>
+      <p class="section-desc" id="chartDesc">两个人的星座，是宇宙写给你们的坐标。生日填好，它替你们把两颗星连成一条只属于你们的线——下方为演示数据。</p>
     </div>
 
     <div class="star-stage">
@@ -190,7 +181,7 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">03</span><span class="sec-dim"></span><span class="sec-tag">ANNIVERSARY LOG</span></div>
       <h2 class="section-title">纪念日</h2>
-      <p class="section-desc">在一起的那天、TA 的生日、下一个周年——系统自动倒数与正数，一个都不会忘。下方为演示数据。</p>
+      <p class="section-desc">有些日子，不必提醒也不会忘。相遇的第几天、下一个周年还有多远，它替你们静静数着——下方为演示数据。</p>
     </div>
 
     <div class="anniv-grid" id="annivGrid"></div>
@@ -203,7 +194,7 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">04</span><span class="sec-dim"></span><span class="sec-tag">DAILY JOURNAL</span></div>
       <h2 class="section-title">日记</h2>
-      <p class="section-desc">每天一篇：心情、文字和照片，云端同步，只有你们彼此可见。下方为示例。</p>
+      <p class="section-desc">不用是惊天动地的一天。一句心情、一张随手拍，写下来就是你们的以后——每天都可以写。</p>
     </div>
 
     <div class="diary-demo">
@@ -253,7 +244,7 @@
     <div class="section-head">
       <div class="sec-meta"><span class="sec-no">05</span><span class="sec-dim"></span><span class="sec-tag">MEMORY ARCHIVE</span></div>
       <h2 class="section-title">照片墙</h2>
-      <p class="section-desc">上传照片，把被光记录下来的瞬间挂上星空。下方为示例图。</p>
+      <p class="section-desc">光替你们留住瞬间，你们把它挂进星空。下方为示例图。</p>
     </div>
 
     <div class="gallery-grid" id="galleryGrid"></div>
@@ -272,14 +263,43 @@
   </div>
 </div>
 
-<!-- ============ 06 留言板 ============ -->
+<!-- ============ 06 私信与通话 ============ -->
+<section id="together" class="section">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="sec-meta"><span class="sec-no">06</span><span class="sec-dim"></span><span class="sec-tag">WHISPER &amp; CALL</span></div>
+      <h2 class="section-title">私语与相见</h2>
+      <p class="section-desc">有些话不必等到见面。文字、照片、文件随手送达；想念的时候，一通语音或视频，让距离短暂失效。登录后进入「私信」，只有你们两个人看得见。</p>
+    </div>
+
+    <div class="together-grid">
+      <article class="together-card">
+        <div class="tg-top"><span class="tg-no">01</span><span class="tg-en">WHISPER</span></div>
+        <h3>私语</h3>
+        <p>想说的话随时写下来。文字与照片，只落在你们两个人的屏幕上。</p>
+      </article>
+      <article class="together-card">
+        <div class="tg-top"><span class="tg-no">02</span><span class="tg-en">DELIVER</span></div>
+        <h3>传递</h3>
+        <p>一份文件、一段语音，隔着城市也能稳稳送到对方手里。</p>
+      </article>
+      <article class="together-card">
+        <div class="tg-top"><span class="tg-no">03</span><span class="tg-en">MEET</span></div>
+        <h3>相见</h3>
+        <p>语音或视频通话，看见彼此的脸，听见熟悉的呼吸。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 留言板 ============ -->
 <section id="message" class="section">
   <div class="section-inner">
     <div class="message-stage">
       <div class="section-head">
-        <div class="sec-meta"><span class="sec-no">06</span><span class="sec-dim"></span><span class="sec-tag">COSMIC TERMINAL</span></div>
+        <div class="sec-meta"><span class="sec-no">07</span><span class="sec-dim"></span><span class="sec-tag">COSMIC TERMINAL</span></div>
         <h2 class="section-title">留言板</h2>
-        <p class="section-desc">把想说的话，留在这片宇宙里——欢迎随手留一句，它只存在于此设备。喜欢这个系统？也可以在下方给作者提建议，它会直接发送到云端，帮助这里变得更好。</p>
+        <p class="section-desc">这台终端只属于来访的人：给彼此留一句话，它只存在于此设备；若愿意，也可以给作者提一条建议，它会直接送达云端。</p>
       </div>
 
       <div class="terminal">
