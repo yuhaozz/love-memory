@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109ab';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109ac';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2805,19 +2805,22 @@
     });
   }
 
-  /* 私信页把应用外壳钉在可视区上：高度=可视高度，用 flex 让输入栏始终贴底。
-     键盘弹出时可视高度变小，外壳跟着变矮，因此不会留下空白。 */
+  /* 私信页高度交给 CSS（100% 铺满布局视口），输入栏用 flex 永远贴底。
+     安卓浏览器/Chrome 的 visualViewport 会把地址栏、键盘工具条再减一次，
+     拿它算高度会算出过小值，所以这里不再使用它（iOS 除外）。 */
+  const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   function syncChatViewport() {
     const app = $('app');
     if (!app) return;
-    if (!app.querySelector('.chat-wrap')) {
-      app.style.height = '';
-      app.style.top = '';
-      return;
-    }
+    app.style.height = '';
+    app.style.top = '';
+    // iOS 的键盘只缩小可视视口、不改布局视口，需要兜底抬高输入栏
+    if (!IS_IOS || !app.querySelector('.chat-wrap')) return;
     const vv = window.visualViewport;
-    app.style.height = Math.round(vv ? vv.height : window.innerHeight) + 'px';
-    app.style.top = Math.round(vv ? vv.offsetTop : 0) + 'px';
+    if (!vv) return;
+    app.style.height = Math.round(vv.height) + 'px';
+    app.style.top = Math.round(vv.offsetTop) + 'px';
   }
 
   /* 私信滚动到底：发出消息、键盘弹起、窗口变矮时都要保证看到最新一条 */
