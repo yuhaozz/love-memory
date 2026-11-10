@@ -3226,9 +3226,13 @@ html[data-theme="light"] .grain,
 html[data-theme="light"] .vignette,
 html[data-theme="light"] #userStars,
 html[data-theme="light"] .cursor-glow,
-html[data-theme="light"] .earth-stage,
 html[data-theme="light"] .sv-space,
 html[data-theme="light"] .hero::after { display: none !important; }
+/* 浅色主题保留地球，并给它一层柔和投影，避免在米色背景上"发飘" */
+html[data-theme="light"] .earth-stage {
+  filter: saturate(0.95) brightness(1.03) drop-shadow(0 24px 54px rgba(40, 58, 88, 0.22));
+  opacity: 0.96;
+}
 html[data-theme="light"] .hero-title .name,
 html[data-theme="light"] .hero-title .name-brand {
   background: linear-gradient(118deg, #1b3a63 0%, #2c6ea8 42%, #8a5a06 84%);
