@@ -593,22 +593,22 @@ function initEarth() {
     });
   }
 
+  /* 先用程序化地表立刻显示，真实素材到了再无缝替换。
+     云层贴图 2.3MB，弱网下要几十秒，不能一直让地球空着。 */
+  buildSurface();
+  buildClouds();
+  earthReady = true;
+  stage.classList.add('ready');
+  drawPlanet();
+
   Promise.all([
     loadImage('images/earth-day.jpg'),
     loadImage('images/earth-lights.png'),
     loadImage('images/earth-clouds.png'),
   ]).then(([d, n, c]) => {
     texDay = d; texLights = n; texCloud = c;
-    earthReady = true;
-    stage.classList.add('ready');
     drawPlanet();
-  }).catch(() => {
-    buildSurface();
-    buildClouds();
-    earthReady = true;
-    stage.classList.add('ready');
-    drawPlanet();
-  });
+  }).catch(() => { /* 素材不可用就继续用程序化贴图 */ });
 
   // ---------- 渲染 ----------
   const sunX = -0.82, sunY = -0.56;
