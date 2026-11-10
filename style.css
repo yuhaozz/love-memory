@@ -3228,10 +3228,10 @@ html[data-theme="light"] #userStars,
 html[data-theme="light"] .cursor-glow,
 html[data-theme="light"] .sv-space,
 html[data-theme="light"] .hero::after { display: none !important; }
-/* 浅色主题保留地球，并给它一层柔和投影，避免在米色背景上"发飘" */
+/* 浅色主题保留地球；不加深投影，否则画布方形边界会在米色底上显形 */
 html[data-theme="light"] .earth-stage {
-  filter: saturate(0.95) brightness(1.03) drop-shadow(0 24px 54px rgba(40, 58, 88, 0.22));
-  opacity: 0.96;
+  filter: saturate(1.02) brightness(1.02);
+  opacity: 0.98;
 }
 html[data-theme="light"] .hero-title .name,
 html[data-theme="light"] .hero-title .name-brand {
