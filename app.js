@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.10 · 20261110f';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.10 · 20261110g';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
