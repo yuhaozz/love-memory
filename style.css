@@ -2971,6 +2971,56 @@ body.app-open .sky-hint, body.modal-open .sky-hint { display: none; }
 }
 .pm-count { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; color: var(--white-faint); }
 
+/* ---- 共同相册 ---- */
+.album-sec { margin-bottom: 46px; }
+.album-sec .ph-month-head { justify-content: flex-start; gap: 12px; }
+.album-add {
+  margin-left: auto;
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--cyan);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: background .25s, border-color .25s;
+}
+.album-add:hover { background: rgba(56, 189, 248, 0.16); border-color: rgba(56, 189, 248, 0.6); }
+.album-cell { position: relative; }
+.album-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(4, 8, 18, 0.72);
+  backdrop-filter: blur(6px);
+  color: var(--white-dim);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .22s, color .22s, border-color .22s;
+}
+.album-cell:hover .album-del { opacity: 1; }
+.album-del:hover { color: #f87171; border-color: rgba(248, 113, 113, 0.6); }
+@media (hover: none) { .album-del { opacity: 1; } }
+.album-empty {
+  padding: 26px 18px;
+  text-align: center;
+  border: 1px dashed var(--hairline);
+  border-radius: 12px;
+  color: var(--white-faint);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
 /* ---- 皮肤选择 ---- */
 .skin-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .skin-chip {
