@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.10 · 20261110b';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.10 · 20261110c';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -373,9 +373,9 @@
         .order('ts', { ascending: false }).limit(200));
       return (r || []).map(rowToMsg).reverse();
     },
-    async fetchSignals(code) {
+    async fetchSignals(code, limit) {
       const r = ck(await sb.from('lm_messages').select('*').eq('couple', code)
-        .eq('kind', 'signal').order('ts', { ascending: false }).limit(30));
+        .eq('kind', 'signal').order('ts', { ascending: false }).limit(limit || 30));
       return (r || []).map(rowToMsg);
     },
     async saveMsg(m, code) {
@@ -3270,11 +3270,15 @@
   }
 
   /* ---------------- 语音通话（WebRTC，信令走 lm_messages） ---------------- */
+  /* 需要中转（TURN）时，把自己服务器的地址填进来即可，例如：
+     [{ urls: 'turn:你的域名:3478', username: 'user', credential: 'pass' }] */
+  const TURN_SERVERS = [];
   const ICE = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      ...TURN_SERVERS,
     ],
   };
   const callOverlay = $('callOverlay');
@@ -3396,6 +3400,7 @@
     const durSec = callStartAt ? Math.max(0, Math.floor((Date.now() - callStartAt) / 1000)) : 0;
     const prevState = callState;
     if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
+    stopFastSignals();
     stopCallClock();
     if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
     if (pc) {
@@ -3463,6 +3468,22 @@
     } catch { /* 信令失败由通话超时兜底 */ }
   }
 
+  /* 通话期间的信令必须"秒到"：原来靠 20 秒轮询，握手和 ICE 候选全被拖死，
+     表现为一直"接通中"然后报网络不行。这里单独开 700ms 的快速通道。 */
+  let fastSigTimer = null;
+  function startFastSignals() {
+    if (fastSigTimer || !cloudOn()) return;
+    fastSigTimer = setInterval(async () => {
+      if (!couple || !me) return;
+      if (callState === 'idle') { stopFastSignals(); return; }
+      if (document.hidden) return;
+      try { handleSignals(await C.fetchSignals(couple.code, 200)); } catch { /* 下一轮再试 */ }
+    }, 700);
+  }
+  function stopFastSignals() {
+    if (fastSigTimer) { clearInterval(fastSigTimer); fastSigTimer = null; }
+  }
+
   function setupPc() {
     pc = new RTCPeerConnection(ICE);
     localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
@@ -3478,8 +3499,14 @@
         startCallClock();
       } else if (pc.connectionState === 'failed') {
         $('callStatus').textContent = '连接失败（网络受限）';
-        setTimeout(() => { sendSignal({ t: 'hangup' }); endCall('通话连接中断'); }, 1500);
+        setTimeout(() => { sendSignal({ t: 'hangup' }); endCall('连接失败：双方网络无法直连，建议连同一个 Wi-Fi 再试'); }, 1200);
       }
+    };
+    pc.oniceconnectionstatechange = () => {
+      if (!pc || callState !== 'connecting') return;
+      const s = pc.iceConnectionState;
+      if (s === 'checking') $('callStatus').textContent = '正在打通网络…';
+      else if (s === 'disconnected') $('callStatus').textContent = '网络不稳定，正在重连…';
     };
   }
 
@@ -3489,9 +3516,9 @@
       if (callState === 'connecting') {
         $('callStatus').textContent = '连接失败（网络受限）';
         sendSignal({ t: 'hangup' });
-        setTimeout(() => endCall('连接失败（网络受限）'), 1500);
+        setTimeout(() => endCall('未能接通：双方网络无法直连，建议连同一个 Wi-Fi 再试'), 1500);
       }
-    }, 20000);
+    }, 30000);
   }
 
   async function startCall(video) {
@@ -3515,6 +3542,7 @@
     callIsVideo = !!video;
     attachLocal(localStream);
     setupPc();
+    startFastSignals();
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -3534,6 +3562,7 @@
     incomingOffer = { sdp: d.sdp, video: !!d.video };
     callIsVideo = !!d.video;
     setCallState('ringing');
+    startFastSignals();
     callTimeoutId = setTimeout(() => {
       if (callState === 'ringing') { sendSignal({ t: 'hangup' }); endCall('来电超时未接听'); }
     }, 35000);
@@ -3560,6 +3589,7 @@
     attachLocal(localStream);
     if (callTimeoutId) { clearTimeout(callTimeoutId); callTimeoutId = null; }
     setupPc();
+    startFastSignals();
     try {
       await pc.setRemoteDescription(incomingOffer.sdp);
       for (const c of pendingIce) { try { await pc.addIceCandidate(c); } catch { /* 跳过 */ } }
