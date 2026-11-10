@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109af';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.10 · 20261110a';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -1098,6 +1098,61 @@
   }
 
   /* ---- 今日：两个人今天的记录并排（一天可写多篇） ---- */
+
+  /* 顶部提示：时间胶囊即将解锁 + 纪念日临近，返回 HTML 或空串 */
+  function todayBanners() {
+    const banners = [];
+    const today = new Date(todayKey() + 'T00:00:00').getTime();
+
+    // 1) 时间胶囊：解锁日在 [今天, 今天+3] 之间（含今天解锁）
+    try {
+      const caps = (promiseState && promiseState.caps) || [];
+      const soon = caps.filter((c) => {
+        if (!c.unlock_at) return false;
+        const t = new Date(c.unlock_at + 'T00:00:00').getTime();
+        const diff = Math.round((t - today) / 86400000);
+        return diff >= 0 && diff <= 3;
+      });
+      soon.forEach((c) => {
+        const t = new Date(c.unlock_at + 'T00:00:00').getTime();
+        const diff = Math.round((t - today) / 86400000);
+        const msg = diff === 0
+          ? `🔓 今天解锁《${esc(c.title || '无题的信')}》`
+          : `⏳ ${diff} 天后解锁《${esc(c.title || '无题的信')}》`;
+        banners.push(`<a class="today-banner" data-go="promise">${msg} <span>去约定 →</span></a>`);
+      });
+    } catch { /* promiseState 未初始化时忽略 */ }
+
+    // 2) 在一起的整数天 / 年份纪念日：下一个在 30 天内
+    if (couple && couple.since) {
+      try {
+        const since = new Date(couple.since + 'T00:00:00');
+        const now = new Date();
+        const totalDays = Math.floor((now - since) / 86400000);
+        const targets = [100, 520, 1000, 1314, 2000, 365 * 2, 365 * 3, 365 * 4, 365 * 5, 365 * 10];
+        let nextAnniv = null;
+        for (const t of targets) {
+          const remain = t - totalDays;
+          if (remain > 0 && remain <= 30) { nextAnniv = { t, remain }; break; }
+        }
+        // 每年同月同日的纪念日
+        const yearAnniv = new Date(now.getFullYear(), since.getMonth(), since.getDate());
+        if (yearAnniv < now) yearAnniv.setFullYear(yearAnniv.getFullYear() + 1);
+        const remY = Math.round((yearAnniv - now) / 86400000);
+        if (remY > 0 && remY <= 30 && (!nextAnniv || remY < nextAnniv.remain)) {
+          const years = yearAnniv.getFullYear() - since.getFullYear();
+          banners.push(`<a class="today-banner" data-go="home">💝 再过 ${remY} 天就是我们的 ${years} 周年 →</a>`);
+        }
+        if (nextAnniv) {
+          banners.push(`<a class="today-banner" data-go="home">✨ 第 ${nextAnniv.t} 天 · 还有 ${nextAnniv.remain} 天 →</a>`);
+        }
+      } catch { /* 忽略日期异常 */ }
+    }
+
+    if (!banners.length) return '';
+    return `<div class="today-banners">${banners.join('')}</div>`;
+  }
+
   function renderToday(main) {
     const users = userMap();
     const p = partner();
@@ -1105,6 +1160,9 @@
     const list = entries().filter((e) => e.date === today);
     const mineList = list.filter((e) => e.author === me.u).sort((a, b) => a.ts - b.ts);
     const partnerList = p ? list.filter((e) => e.author === p.u).sort((a, b) => a.ts - b.ts) : [];
+
+    /* 顶部提示：时间胶囊即将解锁 / 纪念日临近 */
+    const bannerHtml = todayBanners();
 
     const col = (user, dayList, isMe) => `
       <section class="today-col${isMe ? ' me' : ''}">
@@ -1128,6 +1186,7 @@
         <h2>${today.replace(/-/g, ' . ')}</h2>
         <span class="today-sub">TODAY · 两个人的今天</span>
       </div>
+      ${bannerHtml}
       ${!p ? `<div class="waiting-bar">空间配对码 <b>${couple.code}</b> · 等TA用这个码注册加入，就能一起看记录</div>` : ''}
       <div class="today-grid">
         ${col(me, mineList, true)}
@@ -2566,12 +2625,19 @@
           ${canRecall ? '<button type="button" class="chat-op danger" data-op="recall" title="撤回（2 分钟内）">✕</button>' : ''}
         </div>` : '';
 
+      // 长文字消息：超过 240 字截断 + 展开/收起按钮
+      let longTog = '';
+      if (m.kind === 'text' && !m.recalled && (m.text || '').length > 240) {
+        longTog = `<button type="button" class="chat-long-btn" data-op="long">…展开</button>`;
+      }
+
       return `
-        <div class="chat-row${mine ? ' mine' : ''}${m.recalled ? ' recalled' : ''}" data-mid="${esc(m.id)}">
+        <div class="chat-row${mine ? ' mine' : ''}${m.recalled ? ' recalled' : ''}${longTog ? ' long' : ''}" data-mid="${esc(m.id)}">
           <span class="chat-ava">${esc(nick.slice(0, 1))}</span>
           <div class="chat-bubble">
             ${quote}
             ${body}
+            ${longTog}
             <span class="chat-time">${fmtTs(m.ts)}</span>
             ${mine && !m.recalled ? `<span class="chat-read${m.read_ts ? ' on' : ''}">${m.read_ts ? '已读' : '未读'}</span>` : ''}
             ${ops}
@@ -2760,8 +2826,14 @@
         </form>
       </div>`;
     const input = $('chatInput');
+    /* 草稿持久化：切页 / 关闭浏览器也能找回，按配对码隔离 */
+    const draftKey = 'ot_draft_' + couple.code;
+    try { chatDraft = localStorage.getItem(draftKey) || ''; } catch { chatDraft = ''; }
     input.value = chatDraft;
-    input.addEventListener('input', (e) => { chatDraft = e.target.value; });
+    input.addEventListener('input', (e) => {
+      chatDraft = e.target.value;
+      try { localStorage.setItem(draftKey, chatDraft || ''); } catch { /* 忽略容量超限 */ }
+    });
     $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); sendText(); });
     $('chatImg').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendImage(f); });
     $('chatFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; sendFile(f); });
@@ -2838,6 +2910,17 @@
         if (op === 'recall') { if (confirm('撤回这条消息？')) recallMsg(mid); }
         else if (op === 'quote') { quoteMsg(mid); }
         else if (op === 'react') { openReactionPicker(mid, bubble); }
+        return;
+      }
+
+      // 长消息「展开/收起」
+      const longBtn = e.target.closest('.chat-long-btn');
+      if (longBtn) {
+        e.stopPropagation();
+        const row = longBtn.closest('.chat-row');
+        row.classList.toggle('expanded');
+        longBtn.textContent = row.classList.contains('expanded') ? '收起' : '…展开';
+        chatScrollBottom();
         return;
       }
 
@@ -2951,6 +3034,7 @@
     if (!txt) return;
     if (input) input.value = '';
     chatDraft = '';
+    try { localStorage.removeItem('ot_draft_' + couple.code); } catch { /* 忽略 */ }
     chatBusy = true;
     try {
       await storeMsg({ id: newMsgId(), sender: me.u, kind: 'text', text: txt, url: '', name: '', size: 0, ts: Date.now() });
@@ -3484,6 +3568,10 @@
 
   /* ---------------- 主区域点击代理 ---------------- */
   $('appMain').addEventListener('click', async (e) => {
+    /* 今日页顶部 banner：点击跳到对应 tab */
+    const go = e.target.closest('[data-go]');
+    if (go) { switchAppTab(go.dataset.go); return; }
+
     const t = e.target.closest('[data-act]');
     if (!t) return;
     const act = t.dataset.act;
