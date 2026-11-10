@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.09 · 20261109ae';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.09 · 20261109af';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -2701,6 +2701,31 @@
     }, 0);
   }
 
+  /* ---- 私信自定义背景（保存在本机 localStorage，按配对隔离） ---- */
+  const chatBgKey = (code) => 'ot_chatbg_' + code;
+  function saveChatBg(cfg) {
+    try { localStorage.setItem(chatBgKey(couple.code), JSON.stringify(cfg)); }
+    catch { alert('图片太大，本机存不下，换一张小一点的试试'); }
+  }
+  function applyChatBg() {
+    const wrap = document.querySelector('.chat-wrap');
+    if (!wrap || !couple) return;
+    const cfg = store.read(chatBgKey(couple.code), null);
+    const dim = $('chatBgDim');
+    if (cfg && cfg.img) {
+      const d = cfg.dim == null ? 55 : cfg.dim;
+      wrap.classList.add('has-bg');
+      wrap.style.setProperty('--chat-bg', 'url("' + cfg.img + '")');
+      wrap.style.setProperty('--chat-dim', String(d / 100));
+      if (dim) dim.value = String(d);
+    } else {
+      wrap.classList.remove('has-bg');
+      wrap.style.removeProperty('--chat-bg');
+      wrap.style.removeProperty('--chat-dim');
+      if (dim) dim.value = '55';
+    }
+  }
+
   function renderChat(main) {
     const p = partner();
     const list = loadMsgs(couple.code);
@@ -2712,9 +2737,15 @@
             <div class="chat-title">私信<span class="chat-sub">${p ? '仅你们两人可见 · ' + esc(p.nick) : '等TA加入后就能私信和通话'}</span></div>
           </div>
           <div class="chat-calls">
+            <button type="button" class="btn-primary chat-call ghost" id="chatBgBtn">背景</button>
             <button type="button" class="btn-primary chat-call" id="chatCall"${p && cloudOn() ? '' : ' disabled'}>☎ 语音</button>
             <button type="button" class="btn-primary chat-call" id="chatVideoCall"${p && cloudOn() ? '' : ' disabled'}>▷ 视频</button>
           </div>
+        </div>
+        <div class="chat-bg-panel" id="chatBgPanel" hidden>
+          <label class="cbp-btn">选择背景图<input type="file" id="chatBgFile" accept="image/*" hidden /></label>
+          <button type="button" class="cbp-btn" id="chatBgReset">恢复默认</button>
+          <label class="cbp-dim">遮罩<input type="range" id="chatBgDim" min="0" max="85" step="5" /></label>
         </div>
         ${!chatReady ? '<div class="waiting-bar">私信还没有在云端启用：请先在 Supabase 运行 说明.md 里的 lm_messages 建表 SQL。</div>' : ''}
         <div class="chat-list" id="chatList">${chatBubbles(list)}</div>
@@ -2738,6 +2769,34 @@
     $('chatCall').addEventListener('click', () => startCall(false));
     $('chatVideoCall').addEventListener('click', () => startCall(true));
     $('chatBack').addEventListener('click', () => switchAppTab('today'));
+    /* 自定义聊天背景：只存在本机，不占云端存储 */
+    applyChatBg();
+    $('chatBgBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pnl = $('chatBgPanel');
+      pnl.hidden = !pnl.hidden;
+    });
+    $('chatBgFile').addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      try {
+        const img = await compressImageMax(f, 1600);
+        const old = store.read(chatBgKey(couple.code), null) || {};
+        saveChatBg({ img, dim: old.dim == null ? 55 : old.dim });
+        applyChatBg();
+      } catch { alert('这张图片读取失败，换一张试试'); }
+    });
+    $('chatBgDim').addEventListener('input', (e) => {
+      const cfg = store.read(chatBgKey(couple.code), null) || {};
+      cfg.dim = Number(e.target.value);
+      saveChatBg(cfg);
+      applyChatBg();
+    });
+    $('chatBgReset').addEventListener('click', () => {
+      try { localStorage.removeItem(chatBgKey(couple.code)); } catch { /* 忽略 */ }
+      applyChatBg();
+    });
     const listEl = $('chatList');
     listEl.scrollTop = listEl.scrollHeight;
     /* 手机键盘弹起后可视区域变矮，自动贴底，避免发出的话看不到 */
