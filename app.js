@@ -22,7 +22,7 @@
   };
   window.CLOUD = CLOUD;      // 暴露给首页留言板的「给作者的建议」复用同一份配置
   const POLL_MS = 20000;     // 云端模式下，每隔多久拉取一次TA的新记录
-  const BUILD = '2026.11.10 · 20261110a';   // 当前前端版本，用于确认是否已更新到最新
+  const BUILD = '2026.11.10 · 20261110b';   // 当前前端版本，用于确认是否已更新到最新
 
   const $ = (id) => document.getElementById(id);
   const LS = {
@@ -1215,9 +1215,97 @@
     main.innerHTML = html + '</div>';
   }
 
-  /* ---- 照片：按月份聚合 ---- */
+  /* ---- 共同相册：两个人的共享相册（复用 bucket 存储，kind='album'）---- */
+  let albumBusy = false;
+
+  function albumRows() {
+    if (!couple) return [];
+    return (promiseState.bucket || [])
+      .filter((b) => b.kind === 'album' && b.title)
+      .sort((a, b) => b.ts - a.ts);
+  }
+
+  async function addAlbumPhotos() {
+    if (!couple || albumBusy) return;
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.multiple = true;
+    inp.onchange = async () => {
+      const files = Array.prototype.slice.call(inp.files || [], 0, 9);
+      if (!files.length) return;
+      albumBusy = true;
+      syncState('正在上传…');
+      /* 本地模式下需要先确认 bucket 已加载，否则会把已有内容覆盖掉 */
+      if (!promiseState.loaded && couple) { try { await refreshPromise(); } catch { /* 忽略 */ } }
+      let ok = 0;
+      for (const f of files) {
+        try {
+          const dataUrl = await compressImage(f);
+          const url = cloudOn()
+            ? await C.uploadPhoto(dataUrl, `album-${me.u}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`)
+            : dataUrl;
+          const row = {
+            id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+            couple: couple.code, couple_token: store.read(LS.token, ''),
+            kind: 'album', title: url, done: false, done_at: null,
+            author: me.u, ts: Date.now(),
+          };
+          if (cloudOn()) await C.saveBucket(row);
+          promiseState.bucket.push(row);
+          if (!cloudOn()) store.write(LS.bucket(couple.code), promiseState.bucket);
+          ok++;
+        } catch { /* 单张失败不影响其它 */ }
+      }
+      albumBusy = false;
+      syncState(ok ? `相册已更新 · ${ok} 张` : '上传失败');
+      if (curTab === 'photo' && couple) renderPhotos($('appMain'));
+    };
+    inp.click();
+  }
+
+  async function delAlbumPhoto(id) {
+    if (!couple) return;
+    if (!confirm('从共同相册移除这张照片？')) return;
+    promiseState.bucket = (promiseState.bucket || []).filter((b) => b.id !== id);
+    if (cloudOn()) {
+      try { await C.deleteBucket(id); syncState('云端已同步'); } catch { syncState('同步失败'); }
+    } else {
+      store.write(LS.bucket(couple.code), promiseState.bucket);
+    }
+    if (curTab === 'photo' && couple) renderPhotos($('appMain'));
+  }
+
+  /* ---- 照片：共同相册 + 日记照片按月聚合 ---- */
   function renderPhotos(main) {
+    if (!couple) return;
+    /* bucket 里存着相册，进页面时若还没加载就补一次 */
+    if (promiseState.code !== couple.code || !promiseState.loaded) {
+      refreshPromise().then(() => {
+        if (curTab === 'photo' && couple) renderPhotos($('appMain'));
+      }).catch(() => { });
+    }
     const users = userMap();
+    const album = albumRows();
+    const albumHtml = `
+      <section class="album-sec">
+        <div class="ph-month-head">
+          <span class="pm-label">共同相册</span>
+          <span class="pm-count">${album.length} 张</span>
+          <button type="button" class="album-add" data-act="albumAdd">＋ 添加照片</button>
+        </div>
+        ${album.length ? `<div class="photos-grid">${album.map((a) => {
+      const u = users[a.author];
+      return `
+            <figure class="photo-cell album-cell">
+              <img src="${safeUrl(a.title)}" data-act="albumView" data-url="${esc(a.title)}" loading="lazy" alt="">
+              <button type="button" class="album-del" data-act="albumDel" data-id="${esc(a.id)}" title="从相册移除">✕</button>
+              <figcaption><span>${esc(u ? u.nick : a.author)}</span><span>${fmtTs(a.ts).replace('今天 ', '')}</span></figcaption>
+            </figure>`;
+    }).join('')}</div>`
+        : `<div class="album-empty">还没有照片。点「＋ 添加照片」，两个人看到的是同一本相册。</div>`}
+      </section>`;
+
     const list = entries().slice().sort((a, b) => b.ts - a.ts);
     const groups = new Map();   // 'YYYY-MM' -> [cell html]
     for (const e of list) {
@@ -1232,18 +1320,16 @@
           </figure>`);
       });
     }
-    if (!groups.size) {
-      main.innerHTML = emptyState('还没有照片', '写日记时附上照片，这里会汇集成册。');
-      return;
-    }
-    main.innerHTML = [...groups.entries()].map(([k, cells]) => `
+    const monthsHtml = groups.size ? [...groups.entries()].map(([k, cells]) => `
       <section class="ph-month">
         <div class="ph-month-head">
           <span class="pm-label">${monthLabel(k)}</span>
-          <span class="pm-count">${cells.length} 张</span>
+          <span class="pm-count">日记 · ${cells.length} 张</span>
         </div>
         <div class="photos-grid">${cells.join('')}</div>
-      </section>`).join('');
+      </section>`).join('') : '';
+
+    main.innerHTML = albumHtml + monthsHtml;
   }
 
   /* ---- 足迹：时间线 ---- */
@@ -3581,6 +3667,9 @@
       if (e0) openViewer(e0.photos[+t.dataset.i]);
       return;
     }
+    if (act === 'albumAdd') { addAlbumPhotos(); return; }
+    if (act === 'albumView') { openViewer(t.dataset.url); return; }
+    if (act === 'albumDel') { delAlbumPhoto(t.dataset.id); return; }
     if (act === 'edit') {
       const e0 = entries().find((x) => x.id === t.dataset.id);
       if (e0) openEditor(e0);
