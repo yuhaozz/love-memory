@@ -599,7 +599,6 @@ function initEarth() {
   buildClouds();
   earthReady = true;
   stage.classList.add('ready');
-  drawPlanet();
 
   Promise.all([
     loadImage('images/earth-day.jpg'),
