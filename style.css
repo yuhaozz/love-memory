@@ -3228,10 +3228,12 @@ html[data-theme="light"] #userStars,
 html[data-theme="light"] .cursor-glow,
 html[data-theme="light"] .sv-space,
 html[data-theme="light"] .hero::after { display: none !important; }
-/* 浅色主题保留地球；不加深投影，否则画布方形边界会在米色底上显形 */
+/* 浅色主题保留地球；裁掉画布方形光晕，避免在米色底上显出一块方形 */
 html[data-theme="light"] .earth-stage {
   filter: saturate(1.02) brightness(1.02);
   opacity: 0.98;
+  -webkit-mask-image: radial-gradient(closest-side, #000 0 66%, transparent 92%);
+  mask-image: radial-gradient(closest-side, #000 0 66%, transparent 92%);
 }
 html[data-theme="light"] .hero-title .name,
 html[data-theme="light"] .hero-title .name-brand {
