@@ -1,0 +1,41 @@
+name: backup-reminder
+
+# 目的：每月 1 日自动在仓库里创建一个 Issue 提醒导出 Supabase 备份。
+# 免费版没有自动备份，一旦项目出问题只能靠手动导出的这份。
+
+on:
+  schedule:
+    # 每月 1 日 02:00 UTC（北京时间 10:00）
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 创建本月备份提醒
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          ym=$(date -u +%Y-%m)
+          title="每月备份提醒 ${ym}"
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+          body="每月例行事项：导出一次 Supabase 备份（创建于 ${now}）。\n\n**步骤**\n1. 打开 https://supabase.com/dashboard/project/yvjlpyfuejgncsnswxae/settings/database\n2. 找到 Backups / 导出数据，点击「下载备份」\n3. 把下载到的文件存到网盘或移动硬盘（不要只留在这台电脑上）\n\n**为什么必须手动做**\n免费版不做自动备份，项目被暂停或误删后只能靠这份文件恢复。\n\n完成后把这个 Issue 关掉即可，下个月会自动新建一条。"
+          code=$(curl -sS -o /tmp/issue.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"${title}\",\"body\":\"${body}\"}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues")
+          echo "status: ${code}"
+          echo "resp: $(head -c 300 /tmp/issue.json)"
+          if [ "${code}" -ge 300 ]; then
+            echo "创建 Issue 失败"
+            exit 1
+          fi
+          echo "ok"
